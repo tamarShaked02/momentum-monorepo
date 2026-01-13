@@ -1,0 +1,18 @@
+{
+  "name": "@momentum/shared-types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types and interfaces for Momentum services",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "echo 'No build step required for types package'"
+  },
+  "keywords": [
+    "types",
+    "interfaces",
+    "shared",
+    "momentum"
+  ],
+  "author": "",
+  "license": "ISC"
+}
