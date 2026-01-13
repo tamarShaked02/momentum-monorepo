@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  core:
+    build:
+      context: ./services/core
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - USE_MOCK_AI=${USE_MOCK_AI:-true}
+    volumes:
+      # Mount source code for development (hot reload)
+      - ./services/core:/app
+      - /app/node_modules
+    networks:
+      - momentum-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  momentum-network:
+    driver: bridge
+# For future services, add them here following the same pattern:
+# Example:
+#  crm:
+#    build:
+#      context: ./services/crm
+#      dockerfile: Dockerfile
+#    ports:
+#      - "3001:3001"
+#    environment:
+#      - NODE_ENV=development
+#      - PORT=3001
+#    networks:
+#      - momentum-network
