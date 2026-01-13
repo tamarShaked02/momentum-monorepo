@@ -139,3 +139,16 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 # Kiro IDE files
 .kiro/
+
+# Monorepo specific
+# Service-specific build outputs
+services/*/dist/
+services/*/build/
+
+# Docker volumes and data
+docker-data/
+.docker/
+
+# Service-specific environment files
+services/*/.env
+services/*/.env.local
