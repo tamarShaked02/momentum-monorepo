@@ -1,0 +1,12 @@
+{
+  "id": "scheduling",
+  "name": "Scheduling",
+  "description": "Manages appointments, availability, and calendar organization. Essential for service-based businesses like salons, consultants, or trainers.",
+  "keywords": ["appointment", "booking", "schedule", "calendar", "time", "session", "meet", "consultation"],
+  "capabilities": [
+    "Dynamic digital agenda",
+    "Online booking integration",
+    "Walk-in management",
+    "Automated reminders"
+  ]
+}

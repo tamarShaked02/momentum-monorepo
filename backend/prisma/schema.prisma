@@ -1,0 +1,125 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String              @id @default(uuid())
+  email            String              @unique
+  password         String
+  businessName     String?
+  businessType     String?
+  telegramBotToken String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  moduleConfig     ModuleConfig?
+  customers        Customer[]
+  appointments     Appointment[]
+  inventoryItems   InventoryItem[]
+  tasks            Task[]
+  campaigns        MarketingCampaign[]
+}
+
+model ModuleConfig {
+  id                String  @id @default(uuid())
+  userId            String  @unique
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schedulingEnabled Boolean @default(false)
+  crmEnabled        Boolean @default(false)
+  inventoryEnabled  Boolean @default(false)
+  tasksEnabled      Boolean @default(false)
+  marketingEnabled  Boolean @default(false)
+  analyticsEnabled  Boolean @default(false)
+}
+
+model Customer {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  email          String?
+  phone          String?
+  telegramChatId String?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  appointments   Appointment[]
+}
+
+model Appointment {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  title      String
+  startTime  DateTime
+  endTime    DateTime
+  status     String    @default("scheduled")
+  source     String    @default("manual")
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model InventoryItem {
+  id           String             @id @default(uuid())
+  userId       String
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  sku          String?
+  quantity     Int                @default(0)
+  lowThreshold Int                @default(5)
+  price        Float?
+  category     String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  history      InventoryHistory[]
+}
+
+model InventoryHistory {
+  id              String        @id @default(uuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  changeType      String
+  quantityChange  Int
+  previousQty     Int
+  newQty          Int
+  note            String?
+  createdAt       DateTime      @default(now())
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      String    @default("pending")
+  priority    String    @default("medium")
+  category    String?
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model MarketingCampaign {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  goal          String?
+  status        String    @default("draft")
+  channels      String[]
+  smsContent    String?
+  emailContent  String?
+  socialContent String?
+  imageUrl      String?
+  scheduledAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
