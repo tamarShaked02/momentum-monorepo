@@ -523,6 +523,23 @@ const CRMPage: React.FC = () => {
                           <Typography variant="caption" color="text.secondary">
                             {new Date(apt.startTime).toLocaleString()}
                           </Typography>
+                          {apt.notes && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{
+                                display: "block",
+                                mt: 1,
+                                p: 1,
+                                background: "rgba(255,255,255,0.03)",
+                                borderRadius: 1.5,
+                                fontStyle: "italic",
+                                lineHeight: 1.6,
+                              }}
+                            >
+                              📝 {apt.notes}
+                            </Typography>
+                          )}
                         </Box>
                       );
                     })}

@@ -1,25 +1,23 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
-import theme from './theme';
-import { AuthProvider } from './contexts/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
-import Layout from './components/Layout';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import OnboardingPage from './pages/OnboardingPage';
-import DashboardPage from './pages/DashboardPage';
-import AppointmentsPage from './pages/AppointmentsPage';
-import CRMPage from './pages/CRMPage';
-import InventoryPage from './pages/InventoryPage';
-import TasksPage from './pages/TasksPage';
-import MarketingPage from './pages/MarketingPage';
-import AnalyticsPage from './pages/AnalyticsPage';
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Layout from "./components/Layout";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import OnboardingPage from "./pages/OnboardingPage";
+import DashboardPage from "./pages/DashboardPage";
+import AppointmentsPage from "./pages/AppointmentsPage";
+import CRMPage from "./pages/CRMPage";
+import InventoryPage from "./pages/InventoryPage";
+import TasksPage from "./pages/TasksPage";
+import MarketingPage from "./pages/MarketingPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ThemeProvider>
       <BrowserRouter>
         <AuthProvider>
           <Routes>
@@ -29,7 +27,13 @@ const App: React.FC = () => {
             <Route path="/onboarding" element={<OnboardingPage />} />
 
             {/* Protected */}
-            <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+            <Route
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/appointments" element={<AppointmentsPage />} />
               <Route path="/crm" element={<CRMPage />} />
