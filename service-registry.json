@@ -1,0 +1,82 @@
+{
+  "services": {
+    "core": {
+      "name": "Momentum Core Service",
+      "description": "AI-powered business onboarding and analysis service",
+      "port": 3000,
+      "endpoints": ["/api/onboarding/analyze", "/health"],
+      "healthCheck": "/health",
+      "status": "active"
+    }
+  },
+  "configuration": {
+    "environment": "development",
+    "discovery": {
+      "enabled": true,
+      "refreshInterval": 30000
+    },
+    "networking": {
+      "baseUrl": "http://localhost",
+      "cors": {
+        "enabled": true,
+        "origins": ["*"]
+      }
+    }
+  },
+  "future_services": {
+    "crm": {
+      "name": "Customer Relationship Management",
+      "description": "Client data, history, and communication management",
+      "port": 3001,
+      "endpoints": ["/api/crm/clients", "/api/crm/clients/:id", "/health"],
+      "status": "planned"
+    },
+    "analytics": {
+      "name": "Business Analytics",
+      "description": "Business performance insights and reporting",
+      "port": 3002,
+      "endpoints": [
+        "/api/analytics/dashboard",
+        "/api/analytics/revenue",
+        "/health"
+      ],
+      "status": "planned"
+    },
+    "marketing": {
+      "name": "Marketing Automation",
+      "description": "Campaign management and multi-channel distribution",
+      "port": 3003,
+      "endpoints": [
+        "/api/marketing/campaigns",
+        "/api/marketing/templates",
+        "/health"
+      ],
+      "status": "planned"
+    },
+    "inventory": {
+      "name": "Inventory Management",
+      "description": "Product inventory and stock management",
+      "port": 3004,
+      "endpoints": [
+        "/api/inventory/items",
+        "/api/inventory/low-stock",
+        "/health"
+      ],
+      "status": "planned"
+    },
+    "scheduling": {
+      "name": "Appointment Scheduling",
+      "description": "Booking and appointment management system",
+      "port": 3005,
+      "endpoints": ["/api/scheduling/appointments", "/health"],
+      "status": "planned"
+    },
+    "tasks": {
+      "name": "Task Management",
+      "description": "Workflow and task tracking system",
+      "port": 3006,
+      "endpoints": ["/api/tasks", "/health"],
+      "status": "planned"
+    }
+  }
+}
