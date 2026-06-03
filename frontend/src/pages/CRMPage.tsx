@@ -1,28 +1,89 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Fade, Chip, Drawer, Divider, IconButton } from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef } from '@mui/x-data-grid';
-import { Add, People, Close, History } from '@mui/icons-material';
-import api from '../api/client';
-import type { Customer, Appointment } from '../types';
+import React, { useEffect, useState } from "react";
+import {
+  Box,
+  Typography,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Fade,
+  Chip,
+  Drawer,
+  IconButton,
+} from "@mui/material";
+import { DataGrid } from "@mui/x-data-grid";
+import type { GridColDef } from "@mui/x-data-grid";
+import { Add, People, Close, History, Edit, Delete } from "@mui/icons-material";
+import api from "../api/client";
+import type { Customer, Appointment } from "../types";
+
+const emptyForm = { name: "", email: "", phone: "", notes: "" };
 
 const CRMPage: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null,
+  );
   const [history, setHistory] = useState<Appointment[]>([]);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', notes: '' });
+  const [form, setForm] = useState({ ...emptyForm });
 
-  const fetchCustomers = () => { api.get('/customers').then(res => { setCustomers(res.data); setLoading(false); }).catch(() => setLoading(false)); };
-  useEffect(() => { fetchCustomers(); }, []);
+  const fetchCustomers = () => {
+    api
+      .get("/customers")
+      .then((res) => {
+        setCustomers(res.data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  };
 
-  const handleCreate = async () => {
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm({ ...emptyForm });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (customer: Customer) => {
+    setEditingId(customer.id);
+    setForm({
+      name: customer.name,
+      email: customer.email ?? "",
+      phone: customer.phone ?? "",
+      notes: customer.notes ?? "",
+    });
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
     if (!form.name) return;
-    await api.post('/customers', form);
+    if (editingId) {
+      await api.put(`/customers/${editingId}`, form);
+      // update drawer if open
+      setSelectedCustomer((prev) =>
+        prev?.id === editingId ? { ...prev, ...form } : prev,
+      );
+    } else {
+      await api.post("/customers", form);
+    }
     setDialogOpen(false);
-    setForm({ name: '', email: '', phone: '', notes: '' });
+    setForm({ ...emptyForm });
+    fetchCustomers();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Delete this customer? This cannot be undone.")) return;
+    await api.delete(`/customers/${id}`);
+    if (selectedCustomer?.id === id) setDrawerOpen(false);
     fetchCustomers();
   };
 
@@ -32,77 +93,465 @@ const CRMPage: React.FC = () => {
     try {
       const res = await api.get(`/customers/${customer.id}/history`);
       setHistory(res.data.appointments || []);
-    } catch { setHistory([]); }
+    } catch {
+      setHistory([]);
+    }
   };
 
   const columns: GridColDef[] = [
-    { field: 'name', headerName: 'Name', flex: 1, minWidth: 140 },
-    { field: 'email', headerName: 'Email', flex: 1, minWidth: 160 },
-    { field: 'phone', headerName: 'Phone', flex: 0.8, minWidth: 120 },
-    { field: 'appointments', headerName: 'Visits', width: 90, valueGetter: (_v: any, row: any) => row._count?.appointments ?? 0 },
-    { field: 'createdAt', headerName: 'Added', width: 120, valueFormatter: (value: any) => new Date(value).toLocaleDateString() },
-    { field: 'actions', headerName: '', width: 100, sortable: false,
-      renderCell: (params: any) => <Button size="small" onClick={() => openProfile(params.row)} sx={{ color: '#4FC3F7' }}>View</Button>,
+    { field: "name", headerName: "Name", flex: 1, minWidth: 140 },
+    { field: "email", headerName: "Email", flex: 1, minWidth: 160 },
+    { field: "phone", headerName: "Phone", flex: 0.8, minWidth: 120 },
+    {
+      field: "appointments",
+      headerName: "Visits",
+      width: 90,
+      valueGetter: (_v: any, row: any) => row._count?.appointments ?? 0,
+    },
+    {
+      field: "createdAt",
+      headerName: "Added",
+      width: 120,
+      valueFormatter: (value: any) => new Date(value).toLocaleDateString(),
+    },
+    {
+      field: "actions",
+      headerName: "",
+      width: 150,
+      sortable: false,
+      renderCell: (params: any) => (
+        <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
+          <Button
+            size="small"
+            onClick={() => openProfile(params.row)}
+            sx={{ color: "#4FC3F7" }}
+          >
+            View
+          </Button>
+          <IconButton
+            size="small"
+            onClick={() => openEdit(params.row)}
+            sx={{ color: "#FFB74D" }}
+          >
+            <Edit fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => handleDelete(params.row.id)}
+            sx={{ color: "#FF6B6B" }}
+          >
+            <Delete fontSize="small" />
+          </IconButton>
+        </Box>
+      ),
     },
   ];
 
   return (
     <Fade in timeout={500}>
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <People sx={{ color: '#BA68C8', fontSize: 32 }} />
-            <Typography variant="h4" fontWeight={700}>Customers</Typography>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 3,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <People sx={{ color: "#BA68C8", fontSize: 32 }} />
+            <Typography variant="h4" fontWeight={700}>
+              Customers
+            </Typography>
           </Box>
-          <Button variant="contained" startIcon={<Add />} onClick={() => setDialogOpen(true)}>Add Customer</Button>
+          <Button variant="contained" startIcon={<Add />} onClick={openCreate}>
+            Add Customer
+          </Button>
         </Box>
 
-        <Box sx={{ background: 'rgba(26,31,58,0.7)', borderRadius: 4, border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-          <DataGrid rows={customers} columns={columns} loading={loading} autoHeight
-            pageSizeOptions={[10, 25]} initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-            sx={{ border: 'none', '& .MuiDataGrid-columnHeaders': { background: 'rgba(255,255,255,0.03)' }, '& .MuiDataGrid-row:hover': { background: 'rgba(79,195,247,0.04)' }, '& .MuiDataGrid-cell': { borderColor: 'rgba(255,255,255,0.04)' } }}
+        <Box
+          sx={{
+            background: "rgba(26,31,58,0.7)",
+            borderRadius: 2,
+            border: "1px solid rgba(255,255,255,0.08)",
+            overflow: "hidden",
+          }}
+        >
+          <DataGrid
+            rows={customers}
+            columns={columns}
+            loading={loading}
+            autoHeight
+            pageSizeOptions={[10, 25]}
+            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+            sx={{
+              border: "none",
+              "& .MuiDataGrid-columnHeaders": {
+                background: "rgba(255,255,255,0.03)",
+              },
+              "& .MuiDataGrid-row:hover": {
+                background: "rgba(79,195,247,0.04)",
+              },
+              "& .MuiDataGrid-cell": { borderColor: "rgba(255,255,255,0.04)" },
+            }}
           />
         </Box>
 
-        {/* Create Dialog */}
-        <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { background: '#1a1f3a', borderRadius: 4 } }}>
-          <DialogTitle>Add Customer</DialogTitle>
-          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: '16px !important' }}>
-            <TextField label="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} fullWidth required />
-            <TextField label="Email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} fullWidth />
-            <TextField label="Phone" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} fullWidth />
-            <TextField label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} multiline rows={2} fullWidth />
+        {/* Create / Edit Dialog */}
+        <Dialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{ sx: { background: "#1a1f3a", borderRadius: 4 } }}
+        >
+          <DialogTitle>
+            {editingId ? "Edit Customer" : "Add Customer"}
+          </DialogTitle>
+          <DialogContent
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 2.5,
+              pt: "16px !important",
+            }}
+          >
+            <TextField
+              label="Name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              fullWidth
+              required
+            />
+            <TextField
+              label="Email"
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Phone"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Notes"
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              multiline
+              rows={2}
+              fullWidth
+            />
           </DialogContent>
-          <DialogActions sx={{ p: 3 }}><Button onClick={() => setDialogOpen(false)}>Cancel</Button><Button variant="contained" onClick={handleCreate}>Save</Button></DialogActions>
+          <DialogActions sx={{ p: 3 }}>
+            <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button variant="contained" onClick={handleSave}>
+              {editingId ? "Save Changes" : "Save"}
+            </Button>
+          </DialogActions>
         </Dialog>
 
         {/* Profile Drawer */}
-        <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)} PaperProps={{ sx: { width: { xs: '100%', sm: 400 }, background: '#0d1130', p: 3 } }}>
+        <Drawer
+          anchor="right"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          PaperProps={{
+            sx: { width: { xs: "100%", sm: 420 }, background: "#0d1130", p: 0 },
+          }}
+        >
           {selectedCustomer && (
-            <Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h5" fontWeight={700}>{selectedCustomer.name}</Typography>
-                <IconButton onClick={() => setDrawerOpen(false)}><Close /></IconButton>
-              </Box>
-              <Box sx={{ mb: 3 }}>
-                {selectedCustomer.email && <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>📧 {selectedCustomer.email}</Typography>}
-                {selectedCustomer.phone && <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>📱 {selectedCustomer.phone}</Typography>}
-                {selectedCustomer.notes && <Typography variant="body2" color="text.secondary" sx={{ mt: 1, p: 1.5, background: 'rgba(255,255,255,0.03)', borderRadius: 2 }}>📝 {selectedCustomer.notes}</Typography>}
-              </Box>
-              <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)', mb: 2 }} />
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <History sx={{ color: '#4FC3F7' }} />
-                <Typography variant="h6" fontWeight={600}>Appointment History</Typography>
-              </Box>
-              {history.length > 0 ? history.map(apt => (
-                <Box key={apt.id} sx={{ py: 1.5, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography variant="body2" fontWeight={500}>{apt.title}</Typography>
-                    <Chip label={apt.status} size="small" sx={{ textTransform: 'capitalize', fontSize: '0.7rem' }} />
+            <Box
+              sx={{ display: "flex", flexDirection: "column", height: "100%" }}
+            >
+              {/* Header */}
+              <Box
+                sx={{
+                  px: 3,
+                  pt: 3,
+                  pb: 2.5,
+                  background: "rgba(186,104,200,0.08)",
+                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Box
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: "50%",
+                        background: "linear-gradient(135deg, #BA68C8, #7B1FA2)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 20,
+                        fontWeight: 700,
+                        color: "#fff",
+                      }}
+                    >
+                      {selectedCustomer.name[0].toUpperCase()}
+                    </Box>
+                    <Box>
+                      <Typography
+                        variant="h6"
+                        fontWeight={700}
+                        sx={{ lineHeight: 1.2 }}
+                      >
+                        {selectedCustomer.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Customer since{" "}
+                        {new Date(
+                          selectedCustomer.createdAt,
+                        ).toLocaleDateString()}
+                      </Typography>
+                    </Box>
                   </Box>
-                  <Typography variant="caption" color="text.secondary">{new Date(apt.startTime).toLocaleString()}</Typography>
+                  <Box sx={{ display: "flex", gap: 0.5 }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setDrawerOpen(false);
+                        openEdit(selectedCustomer);
+                      }}
+                      sx={{ color: "#FFB74D" }}
+                    >
+                      <Edit fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(selectedCustomer.id)}
+                      sx={{ color: "#FF6B6B" }}
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => setDrawerOpen(false)}
+                      sx={{ ml: 0.5 }}
+                    >
+                      <Close />
+                    </IconButton>
+                  </Box>
                 </Box>
-              )) : <Typography variant="body2" color="text.secondary">No appointments yet.</Typography>}
+              </Box>
+
+              {/* Contact Info */}
+              <Box
+                sx={{
+                  px: 3,
+                  py: 2.5,
+                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <Typography
+                  variant="overline"
+                  color="text.secondary"
+                  sx={{ letterSpacing: 1.5, fontSize: "0.7rem" }}
+                >
+                  Contact
+                </Typography>
+                <Box
+                  sx={{
+                    mt: 1.5,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1.5,
+                  }}
+                >
+                  {selectedCustomer.email && (
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
+                    >
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 1.5,
+                          background: "rgba(79,195,247,0.1)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 16,
+                        }}
+                      >
+                        📧
+                      </Box>
+                      <Typography variant="body2">
+                        {selectedCustomer.email}
+                      </Typography>
+                    </Box>
+                  )}
+                  {selectedCustomer.phone && (
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
+                    >
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 1.5,
+                          background: "rgba(102,187,106,0.1)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 16,
+                        }}
+                      >
+                        📱
+                      </Box>
+                      <Typography variant="body2">
+                        {selectedCustomer.phone}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+
+              {/* Notes */}
+              {selectedCustomer.notes && (
+                <Box
+                  sx={{
+                    px: 3,
+                    py: 2.5,
+                    borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <Typography
+                    variant="overline"
+                    color="text.secondary"
+                    sx={{ letterSpacing: 1.5, fontSize: "0.7rem" }}
+                  >
+                    Notes
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      mt: 1.5,
+                      p: 2,
+                      background: "rgba(255,255,255,0.03)",
+                      borderRadius: 2,
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    {selectedCustomer.notes}
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Appointment History */}
+              <Box sx={{ px: 3, py: 2.5, flex: 1, overflow: "auto" }}>
+                <Box
+                  sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}
+                >
+                  <History sx={{ color: "#4FC3F7", fontSize: 18 }} />
+                  <Typography
+                    variant="overline"
+                    color="text.secondary"
+                    sx={{ letterSpacing: 1.5, fontSize: "0.7rem" }}
+                  >
+                    Appointment History
+                  </Typography>
+                  <Chip
+                    label={history.length}
+                    size="small"
+                    sx={{
+                      ml: "auto",
+                      background: "rgba(79,195,247,0.12)",
+                      color: "#4FC3F7",
+                      fontWeight: 700,
+                      height: 20,
+                      fontSize: "0.7rem",
+                    }}
+                  />
+                </Box>
+                {history.length > 0 ? (
+                  <Box
+                    sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
+                  >
+                    {history.map((apt) => {
+                      const statusColors: Record<string, string> = {
+                        scheduled: "#4FC3F7",
+                        completed: "#66BB6A",
+                        cancelled: "#FF6B6B",
+                        no_show: "#FFB74D",
+                      };
+                      const color = statusColors[apt.status] ?? "#999";
+                      return (
+                        <Box
+                          key={apt.id}
+                          sx={{
+                            p: 2,
+                            background: "rgba(255,255,255,0.03)",
+                            borderRadius: 2,
+                            border: "1px solid rgba(255,255,255,0.05)",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              mb: 0.5,
+                            }}
+                          >
+                            <Typography variant="body2" fontWeight={600}>
+                              {apt.title}
+                            </Typography>
+                            <Chip
+                              label={apt.status}
+                              size="small"
+                              sx={{
+                                textTransform: "capitalize",
+                                fontSize: "0.65rem",
+                                height: 20,
+                                background: `${color}22`,
+                                color,
+                              }}
+                            />
+                          </Box>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(apt.startTime).toLocaleString()}
+                          </Typography>
+                          {apt.notes && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{
+                                display: "block",
+                                mt: 1,
+                                p: 1,
+                                background: "rgba(255,255,255,0.03)",
+                                borderRadius: 1.5,
+                                fontStyle: "italic",
+                                lineHeight: 1.6,
+                              }}
+                            >
+                              📝 {apt.notes}
+                            </Typography>
+                          )}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                ) : (
+                  <Box sx={{ textAlign: "center", py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No appointments yet.
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
             </Box>
           )}
         </Drawer>

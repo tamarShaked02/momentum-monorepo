@@ -1,106 +1,138 @@
-# Momentum Monorepo
+# Momentum — Business Management Platform
 
-A monorepo containing the Momentum AI-powered business onboarding platform and its microservices.
+A full-stack business management app with AI-powered features, built with React, Node.js, PostgreSQL, and Prisma.
 
-## Structure
+---
 
-```
-momentum-monorepo/
-├── services/
-│   └── core/                 # Core AI onboarding service
-├── packages/
-│   └── shared-types/         # Shared types and utilities
-├── modules/                  # Business module definitions
-├── service-registry.json     # Service discovery configuration
-└── docker-compose.yml        # Development orchestration
-```
+## Prerequisites
 
-## Quick Start
+- Node.js 18+
+- PostgreSQL (or Docker)
+- npm
 
-### Development
+---
+
+## Setup
+
+### 1. Clone the repo
 
 ```bash
-# Start core service
-npm run dev:core
+git clone https://github.com/tamarShaked02/momentum-monorepo.git
+cd momentum-monorepo
+```
 
-# Or start from root
+### 2. Configure environment variables
+
+**Backend** — copy and fill in `backend/.env`:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/momentum
+JWT_SECRET=your-secret-key
+BOT_TOKEN=                      # optional: Telegram bot token
+GEMINI_API_KEY=your-gemini-key  # or set USE_MOCK_AI=true
+PORT=3000
+NODE_ENV=development
+USE_MOCK_AI=true                # set to false to use real AI
+```
+
+**Frontend** — `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:3000/api
+```
+
+### 3. Start PostgreSQL
+
+Using Docker:
+
+```bash
+docker run --name momentum-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=momentum -p 5432:5432 -d postgres
+```
+
+Or use your local PostgreSQL instance.
+
+### 4. Install dependencies
+
+```bash
+# Backend
+cd backend && npm install
+
+# Frontend
+cd ../frontend && npm install
+```
+
+### 5. Run database migrations
+
+```bash
+cd backend
+npx prisma migrate deploy
+```
+
+### 6. Start the backend
+
+```bash
+cd backend
 npm run dev
-
-# Build all services
-npm run build
 ```
 
-### Docker
+Server runs at `http://localhost:3000`.  
+Swagger docs at `http://localhost:3000/api-docs`.
+
+### 7. Start the frontend
 
 ```bash
-# Build and run with Docker Compose
-npm run docker:dev
+cd frontend
+npm run dev
+```
 
-# Or manually
+App runs at `http://localhost:5173`.
+
+---
+
+## Docker (core service only)
+
+```bash
 docker-compose up --build
 ```
 
-## Services
+---
 
-### Core Service (Port 3000)
+## Project Structure
 
-- **Description**: AI-powered business analysis and onboarding
-- **Endpoints**:
-  - `POST /api/onboarding/analyze` - Analyze business description
-  - `GET /health` - Health check
-- **Location**: `services/core/`
-
-## Planned Services
-
-The following services are planned for future development:
-
-- **CRM Service** (Port 3001) - Customer relationship management
-- **Analytics Service** (Port 3002) - Business analytics and reporting
-- **Marketing Service** (Port 3003) - Marketing automation and campaigns
-- **Inventory Service** (Port 3004) - Product inventory management
-- **Scheduling Service** (Port 3005) - Appointment scheduling
-- **Tasks Service** (Port 3006) - Task and workflow management
-
-## Development Workflow
-
-### Adding New Services
-
-1. Create service directory: `services/{service-name}/`
-2. Add service configuration to `service-registry.json`
-3. Update `docker-compose.yml` with new service
-4. Add npm scripts to root `package.json`
-
-### Shared Packages
-
-Common functionality should be placed in `packages/` and imported by services:
-
-```javascript
-import { createApiResponse } from "@momentum/shared-types";
+```
+momentum-monorepo/
+├── backend/              # Express + Prisma API
+│   ├── src/
+│   │   ├── routes/       # API route handlers
+│   │   ├── services/     # AI, inventory sync
+│   │   ├── middleware/   # Auth JWT middleware
+│   │   └── config/       # DB, env, swagger
+│   └── prisma/           # Schema and migrations
+├── frontend/             # React + Vite + MUI
+│   └── src/
+│       ├── pages/        # Feature pages
+│       ├── components/   # Shared components
+│       ├── contexts/     # Auth context
+│       └── api/          # Axios client
+└── docker-compose.yml
 ```
 
-## Environment Variables
+---
 
-- `PORT` - Service port (default: 3000 for core)
-- `NODE_ENV` - Environment (development/production)
-- `GEMINI_API_KEY` - Google Gemini API key for AI functionality
-- `USE_MOCK_AI` - Use mock AI responses (default: true)
+## Modules
 
-## Deployment
+| Module       | Description                              |
+| ------------ | ---------------------------------------- |
+| Dashboard    | Overview widgets for all enabled modules |
+| Appointments | Schedule and manage appointments         |
+| Customers    | CRM — profiles, history, notes           |
+| Inventory    | Stock tracking with low-stock alerts     |
+| Tasks        | Kanban board with priorities             |
+| Marketing    | AI-generated campaign content            |
+| Analytics    | Appointment and business stats           |
 
-Each service can be deployed independently using its Dockerfile:
+---
 
-```bash
-# Build core service
-docker build -t momentum-core ./services/core
+## TODO
 
-# Run core service
-docker run -p 3000:3000 momentum-core
-```
-
-## Contributing
-
-1. Each service should follow the established patterns
-2. Use shared packages for common functionality
-3. Maintain consistent API response formats
-4. Include health check endpoints for all services
-5. Update service registry when adding new services
+See [TODO.md](./TODO.md) for the full task list.
