@@ -150,9 +150,7 @@ const InventoryPage: React.FC = () => {
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Inventory2 sx={{ color: "#FFB74D", fontSize: 32 }} />
-            <Typography variant="h4" fontWeight={700}>
-              Inventory
-            </Typography>
+            <Typography variant="h4">Inventory</Typography>
           </Box>
           <Button
             variant="contained"

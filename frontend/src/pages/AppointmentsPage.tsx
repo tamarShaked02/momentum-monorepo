@@ -223,9 +223,7 @@ const AppointmentsPage: React.FC = () => {
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <CalendarMonth sx={{ color: "#4FC3F7", fontSize: 32 }} />
-            <Typography variant="h4" fontWeight={700}>
-              Appointments
-            </Typography>
+            <Typography variant="h4">Appointments</Typography>
           </Box>
           <Button variant="contained" startIcon={<Add />} onClick={openCreate}>
             New Appointment

@@ -122,9 +122,7 @@ const MarketingPage: React.FC = () => {
       <Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
           <Campaign sx={{ color: "#FF7043", fontSize: 32 }} />
-          <Typography variant="h4" fontWeight={700}>
-            Marketing
-          </Typography>
+          <Typography variant="h4">Marketing</Typography>
         </Box>
 
         <Tabs

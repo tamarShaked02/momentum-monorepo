@@ -1,29 +1,10 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useMemo,
-  ReactNode,
-} from "react";
+import React, { useState, useMemo, type ReactNode } from "react";
 import {
   createTheme,
   ThemeProvider as MuiThemeProvider,
 } from "@mui/material/styles";
 import { CssBaseline } from "@mui/material";
-
-type Mode = "dark" | "light";
-
-interface ThemeContextType {
-  mode: Mode;
-  toggleMode: () => void;
-}
-
-const ThemeContext = createContext<ThemeContextType>({
-  mode: "dark",
-  toggleMode: () => {},
-});
-
-export const useThemeMode = () => useContext(ThemeContext);
+import { ThemeContext, type Mode } from "./themeContext";
 
 const buildTheme = (mode: Mode) =>
   createTheme({
@@ -35,12 +16,12 @@ const buildTheme = (mode: Mode) =>
       success: { main: "#66BB6A" },
       warning: { main: "#FFB74D" },
       background: {
-        default: mode === "dark" ? "#0a0e27" : "#f0f2f8",
-        paper: mode === "dark" ? "#1a1f3a" : "#ffffff",
+        default: mode === "dark" ? "#0a0e27" : "#d8dce8",
+        paper: mode === "dark" ? "#1a1f3a" : "#e2e6f0",
       },
       text: {
-        primary: mode === "dark" ? "#E8EAED" : "#1a1f3a",
-        secondary: mode === "dark" ? "#9AA0B4" : "#5a6278",
+        primary: mode === "dark" ? "#E8EAED" : "#1e2235",
+        secondary: mode === "dark" ? "#9AA0B4" : "#4a5068",
       },
     },
     typography: {
@@ -56,12 +37,15 @@ const buildTheme = (mode: Mode) =>
       MuiCard: {
         styleOverrides: {
           root: {
-            background: mode === "dark" ? "rgba(26, 31, 58, 0.7)" : "#ffffff",
-            backdropFilter: mode === "dark" ? "blur(12px)" : "none",
+            background:
+              mode === "dark"
+                ? "rgba(26, 31, 58, 0.7)"
+                : "rgba(200, 205, 225, 0.6)",
+            backdropFilter: mode === "dark" ? "blur(12px)" : "blur(8px)",
             border:
               mode === "dark"
                 ? "1px solid rgba(255,255,255,0.08)"
-                : "1px solid rgba(0,0,0,0.08)",
+                : "1px solid rgba(100,110,150,0.15)",
             transition: "transform 0.2s ease, box-shadow 0.2s ease",
             "&:hover": {
               transform: "translateY(-2px)",
@@ -89,12 +73,12 @@ const buildTheme = (mode: Mode) =>
             "& .MuiOutlinedInput-root": {
               borderRadius: 12,
               background:
-                mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.04)",
               "& fieldset": {
                 borderColor:
                   mode === "dark"
                     ? "rgba(255,255,255,0.12)"
-                    : "rgba(0,0,0,0.15)",
+                    : "rgba(80,90,130,0.2)",
               },
               "&:hover fieldset": { borderColor: "rgba(79, 195, 247, 0.5)" },
             },
@@ -107,12 +91,12 @@ const buildTheme = (mode: Mode) =>
       MuiDrawer: {
         styleOverrides: {
           paper: {
-            background: mode === "dark" ? "rgba(10, 14, 39, 0.95)" : "#ffffff",
+            background: mode === "dark" ? "rgba(10, 14, 39, 0.95)" : "#cdd1e0",
             backdropFilter: mode === "dark" ? "blur(20px)" : "none",
             borderRight:
               mode === "dark"
                 ? "1px solid rgba(255,255,255,0.06)"
-                : "1px solid rgba(0,0,0,0.08)",
+                : "1px solid rgba(80,90,130,0.15)",
           },
         },
       },
@@ -122,12 +106,12 @@ const buildTheme = (mode: Mode) =>
             background:
               mode === "dark"
                 ? "rgba(10, 14, 39, 0.8)"
-                : "rgba(255,255,255,0.9)",
+                : "rgba(210, 215, 230, 0.9)",
             backdropFilter: "blur(20px)",
             borderBottom:
               mode === "dark"
                 ? "1px solid rgba(255,255,255,0.06)"
-                : "1px solid rgba(0,0,0,0.08)",
+                : "1px solid rgba(80,90,130,0.15)",
             boxShadow: "none",
           },
         },

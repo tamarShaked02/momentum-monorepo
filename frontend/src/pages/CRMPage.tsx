@@ -160,9 +160,7 @@ const CRMPage: React.FC = () => {
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <People sx={{ color: "#BA68C8", fontSize: 32 }} />
-            <Typography variant="h4" fontWeight={700}>
-              Customers
-            </Typography>
+            <Typography variant="h4">Customers</Typography>
           </Box>
           <Button variant="contained" startIcon={<Add />} onClick={openCreate}>
             Add Customer

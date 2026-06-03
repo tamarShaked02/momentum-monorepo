@@ -29,7 +29,7 @@ import {
   DarkMode,
 } from "@mui/icons-material";
 import { useAuth } from "../contexts/AuthContext";
-import { useThemeMode } from "../contexts/ThemeContext";
+import { useThemeMode } from "../contexts/themeContext";
 
 interface SidebarProps {
   drawerWidth: number;
@@ -122,6 +122,22 @@ const Sidebar: React.FC<SidebarProps> = ({
         >
           Momentum
         </Typography>
+        <Tooltip
+          title={mode === "dark" ? "Light mode" : "Dark mode"}
+          placement="right"
+        >
+          <IconButton
+            size="small"
+            onClick={toggleMode}
+            sx={{ ml: "auto", color: "text.secondary" }}
+          >
+            {mode === "dark" ? (
+              <LightMode fontSize="small" />
+            ) : (
+              <DarkMode fontSize="small" />
+            )}
+          </IconButton>
+        </Tooltip>
       </Box>
 
       <Divider sx={{ borderColor: "rgba(255,255,255,0.06)", mb: 1 }} />

@@ -16,6 +16,22 @@ import {
   IconButton,
 } from "@mui/material";
 import { Add, CheckCircle, Delete } from "@mui/icons-material";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCorners,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import api from "../api/client";
 import type { Task } from "../types";
 
@@ -31,10 +47,185 @@ const priorityColors: Record<string, string> = {
   low: "#66BB6A",
 };
 
+// ── Sortable Task Card ──────────────────────────────────────────────────────
+
+interface TaskCardProps {
+  task: Task;
+  onDelete: (id: string) => void;
+  overlay?: boolean;
+}
+
+const TaskCard: React.FC<TaskCardProps> = ({ task, onDelete, overlay }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  return (
+    <Card
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      sx={{
+        borderRadius: 2,
+        cursor: "grab",
+        opacity: isDragging && !overlay ? 0.35 : 1,
+        transform: CSS.Transform.toString(transform),
+        transition,
+        boxShadow: overlay ? "0 8px 24px rgba(0,0,0,0.4)" : undefined,
+        "&:hover": { transform: isDragging ? undefined : "translateY(-1px)" },
+      }}
+    >
+      <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "start",
+            mb: 1,
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600, flexGrow: 1 }}>
+            {task.title}
+          </Typography>
+          <IconButton
+            size="small"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(task.id);
+            }}
+            sx={{ color: "rgba(255,255,255,0.3)", p: 0.3 }}
+          >
+            <Delete fontSize="small" />
+          </IconButton>
+        </Box>
+        {task.description && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", mb: 1 }}
+          >
+            {task.description}
+          </Typography>
+        )}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 0.5,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <Chip
+            label={task.priority}
+            size="small"
+            sx={{
+              fontSize: "0.65rem",
+              height: 20,
+              background: `${priorityColors[task.priority]}22`,
+              color: priorityColors[task.priority],
+            }}
+          />
+          {task.category && (
+            <Chip
+              label={task.category}
+              size="small"
+              variant="outlined"
+              sx={{
+                fontSize: "0.65rem",
+                height: 20,
+                borderColor: "rgba(255,255,255,0.1)",
+              }}
+            />
+          )}
+          {task.dueDate && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ ml: "auto" }}
+            >
+              {new Date(task.dueDate).toLocaleDateString()}
+            </Typography>
+          )}
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
+
+// ── Column ──────────────────────────────────────────────────────────────────
+
+interface ColumnProps {
+  col: { key: string; label: string; color: string };
+  tasks: Task[];
+  onDelete: (id: string) => void;
+}
+
+const Column: React.FC<ColumnProps> = ({ col, tasks, onDelete }) => (
+  <Box>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, px: 1 }}>
+      <Box
+        sx={{
+          width: 10,
+          height: 10,
+          borderRadius: "50%",
+          background: col.color,
+        }}
+      />
+      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+        {col.label}
+      </Typography>
+      <Chip
+        label={tasks.length}
+        size="small"
+        sx={{ ml: "auto", background: `${col.color}22`, color: col.color }}
+      />
+    </Box>
+    <SortableContext
+      items={tasks.map((t) => t.id)}
+      strategy={verticalListSortingStrategy}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 1.5,
+          minHeight: 200,
+          p: 1.5,
+          borderRadius: 2,
+          background: "rgba(255,255,255,0.02)",
+          border: "1px dashed rgba(255,255,255,0.06)",
+        }}
+      >
+        {tasks.map((task) => (
+          <TaskCard key={task.id} task={task} onDelete={onDelete} />
+        ))}
+        {tasks.length === 0 && (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ textAlign: "center", py: 4, opacity: 0.5 }}
+          >
+            No tasks
+          </Typography>
+        )}
+      </Box>
+    </SortableContext>
+  </Box>
+);
+
+// ── Page ────────────────────────────────────────────────────────────────────
+
 const TasksPage: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -42,6 +233,10 @@ const TasksPage: React.FC = () => {
     category: "",
     dueDate: "",
   });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
 
   const fetchTasks = () => {
     api
@@ -52,6 +247,7 @@ const TasksPage: React.FC = () => {
       })
       .catch(() => setLoading(false));
   };
+
   useEffect(() => {
     fetchTasks();
   }, []);
@@ -70,18 +266,44 @@ const TasksPage: React.FC = () => {
     fetchTasks();
   };
 
-  const handleStatusChange = async (id: string, status: string) => {
-    await api.put(`/tasks/${id}`, { status });
-    fetchTasks();
-  };
-
   const handleDelete = async (id: string) => {
     await api.delete(`/tasks/${id}`);
     fetchTasks();
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const task = tasks.find((t) => t.id === event.active.id);
+    setActiveTask(task ?? null);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveTask(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    // Determine target column: over could be a column id or a task id
+    const targetCol = statusColumns.find((c) => c.key === over.id);
+    const targetStatus = targetCol
+      ? targetCol.key
+      : tasks.find((t) => t.id === over.id)?.status;
+
+    const draggedTask = tasks.find((t) => t.id === active.id);
+    if (!draggedTask || !targetStatus || draggedTask.status === targetStatus)
+      return;
+
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === active.id ? { ...t, status: targetStatus } : t,
+      ),
+    );
+    await api.put(`/tasks/${active.id}`, { status: targetStatus });
+  };
+
   const getTasksByStatus = (status: string) =>
     tasks.filter((t) => t.status === status);
+
+  if (loading) return null;
 
   return (
     <Fade in timeout={500}>
@@ -96,9 +318,7 @@ const TasksPage: React.FC = () => {
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <CheckCircle sx={{ color: "#66BB6A", fontSize: 32 }} />
-            <Typography variant="h4" fontWeight={700}>
-              Tasks
-            </Typography>
+            <Typography variant="h4">Tasks</Typography>
           </Box>
           <Button
             variant="contained"
@@ -109,196 +329,35 @@ const TasksPage: React.FC = () => {
           </Button>
         </Box>
 
-        {/* Kanban Board */}
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" },
-            gap: 3,
-            minHeight: 400,
-          }}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
         >
-          {statusColumns.map((col) => (
-            <Box key={col.key}>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  mb: 2,
-                  px: 1,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: "50%",
-                    background: col.color,
-                  }}
-                />
-                <Typography variant="subtitle1" fontWeight={600}>
-                  {col.label}
-                </Typography>
-                <Chip
-                  label={getTasksByStatus(col.key).length}
-                  size="small"
-                  sx={{
-                    ml: "auto",
-                    background: `${col.color}22`,
-                    color: col.color,
-                  }}
-                />
-              </Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 1.5,
-                  minHeight: 200,
-                  p: 1.5,
-                  borderRadius: 2,
-                  background: "rgba(255,255,255,0.02)",
-                  border: "1px dashed rgba(255,255,255,0.06)",
-                }}
-              >
-                {getTasksByStatus(col.key).map((task) => (
-                  <Card
-                    key={task.id}
-                    sx={{
-                      background: "rgba(26,31,58,0.9)",
-                      borderRadius: 2,
-                      cursor: "pointer",
-                      "&:hover": { transform: "translateY(-1px)" },
-                    }}
-                  >
-                    <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "start",
-                          mb: 1,
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          fontWeight={600}
-                          sx={{ flexGrow: 1 }}
-                        >
-                          {task.title}
-                        </Typography>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleDelete(task.id)}
-                          sx={{ color: "rgba(255,255,255,0.3)", p: 0.3 }}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </Box>
-                      {task.description && (
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ display: "block", mb: 1 }}
-                        >
-                          {task.description}
-                        </Typography>
-                      )}
-                      <Box
-                        sx={{
-                          display: "flex",
-                          gap: 0.5,
-                          flexWrap: "wrap",
-                          alignItems: "center",
-                        }}
-                      >
-                        <Chip
-                          label={task.priority}
-                          size="small"
-                          sx={{
-                            fontSize: "0.65rem",
-                            height: 20,
-                            background: `${priorityColors[task.priority]}22`,
-                            color: priorityColors[task.priority],
-                          }}
-                        />
-                        {task.category && (
-                          <Chip
-                            label={task.category}
-                            size="small"
-                            variant="outlined"
-                            sx={{
-                              fontSize: "0.65rem",
-                              height: 20,
-                              borderColor: "rgba(255,255,255,0.1)",
-                            }}
-                          />
-                        )}
-                        {task.dueDate && (
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ ml: "auto" }}
-                          >
-                            {new Date(task.dueDate).toLocaleDateString()}
-                          </Typography>
-                        )}
-                      </Box>
-                      {col.key !== "completed" && (
-                        <Box sx={{ mt: 1.5, display: "flex", gap: 0.5 }}>
-                          {col.key === "pending" && (
-                            <Button
-                              size="small"
-                              fullWidth
-                              variant="outlined"
-                              sx={{
-                                fontSize: "0.7rem",
-                                borderColor: "rgba(79,195,247,0.3)",
-                                color: "#4FC3F7",
-                              }}
-                              onClick={() =>
-                                handleStatusChange(task.id, "in_progress")
-                              }
-                            >
-                              Start
-                            </Button>
-                          )}
-                          {col.key === "in_progress" && (
-                            <Button
-                              size="small"
-                              fullWidth
-                              variant="outlined"
-                              sx={{
-                                fontSize: "0.7rem",
-                                borderColor: "rgba(102,187,106,0.3)",
-                                color: "#66BB6A",
-                              }}
-                              onClick={() =>
-                                handleStatusChange(task.id, "completed")
-                              }
-                            >
-                              Done
-                            </Button>
-                          )}
-                        </Box>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-                {getTasksByStatus(col.key).length === 0 && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ textAlign: "center", py: 4, opacity: 0.5 }}
-                  >
-                    No tasks
-                  </Typography>
-                )}
-              </Box>
-            </Box>
-          ))}
-        </Box>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" },
+              gap: 3,
+              minHeight: 400,
+            }}
+          >
+            {statusColumns.map((col) => (
+              <Column
+                key={col.key}
+                col={col}
+                tasks={getTasksByStatus(col.key)}
+                onDelete={handleDelete}
+              />
+            ))}
+          </Box>
+          <DragOverlay>
+            {activeTask && (
+              <TaskCard task={activeTask} onDelete={() => {}} overlay />
+            )}
+          </DragOverlay>
+        </DndContext>
 
         <Dialog
           open={dialogOpen}
