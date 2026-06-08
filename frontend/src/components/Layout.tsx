@@ -19,7 +19,7 @@ const Layout: React.FC = () => {
         minHeight: "100vh",
         background: isDark
           ? "linear-gradient(145deg, #0a0e27 0%, #111638 50%, #0d1130 100%)"
-          : "linear-gradient(145deg, #f0f2f8 0%, #e8ecf5 100%)",
+          : "#f2f2f7",
       }}
     >
       <Sidebar

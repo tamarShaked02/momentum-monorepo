@@ -29,7 +29,7 @@ import {
   DarkMode,
 } from "@mui/icons-material";
 import { useAuth } from "../contexts/AuthContext";
-import { useThemeMode } from "../contexts/themeContext";
+import { useThemeMode } from "../contexts/ThemeContext";
 
 interface SidebarProps {
   drawerWidth: number;

@@ -10,7 +10,7 @@
 
 ### General
 
-- [ ] Light / dark mode toggle (sidebar) ✅ added
+- [v] Light / dark mode toggle (sidebar) ✅ added
 - [ ] Mobile responsive layout improvements
 - [ ] Global loading/error toast notifications (replace `alert()` calls)
 - [ ] Empty state illustrations for all pages
