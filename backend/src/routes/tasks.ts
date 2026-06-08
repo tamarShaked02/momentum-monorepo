@@ -1,6 +1,9 @@
-import { Router, Response } from 'express';
-import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import prisma from '../config/db.js';
+import { Router, Response } from "express";
+import { authMiddleware, AuthRequest } from "../middleware/auth.js";
+import { validate } from "../middleware/validate.js";
+import { createTaskSchema } from "../validation/schemas.js";
+import { getPagination, paginatedResponse } from "../utils/pagination.js";
+import prisma from "../config/db.js";
 
 /**
  * @swagger
@@ -43,18 +46,45 @@ const router = Router();
  *       401:
  *         description: Unauthorized
  */
-router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { status, category } = req.query;
-    const where: any = { userId: req.userId! };
-    if (status) where.status = status as string;
-    if (category) where.category = category as string;
-    const tasks = await prisma.task.findMany({ where, orderBy: [{ status: 'asc' }, { priority: 'asc' }, { dueDate: 'asc' }] });
-    res.json(tasks);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch tasks.' });
-  }
-});
+router.get(
+  "/",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { status, category } = req.query;
+      const where: any = { userId: req.userId! };
+      if (status) where.status = status as string;
+      if (category) where.category = category as string;
+
+      const pagination = getPagination(req);
+
+      if (pagination) {
+        const [tasks, total] = await Promise.all([
+          prisma.task.findMany({
+            where,
+            orderBy: [
+              { status: "asc" },
+              { priority: "asc" },
+              { dueDate: "asc" },
+            ],
+            skip: pagination.skip,
+            take: pagination.take,
+          }),
+          prisma.task.count({ where }),
+        ]);
+        res.json(paginatedResponse(tasks, total, pagination));
+      } else {
+        const tasks = await prisma.task.findMany({
+          where,
+          orderBy: [{ status: "asc" }, { priority: "asc" }, { dueDate: "asc" }],
+        });
+        res.json(tasks);
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch tasks." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -82,18 +112,35 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
  *       401:
  *         description: Unauthorized
  */
-router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { title, description, status, priority, category, dueDate } = req.body;
-    if (!title) { res.status(400).json({ error: 'Title is required.' }); return; }
-    const task = await prisma.task.create({
-      data: { userId: req.userId!, title, description: description || null, status: status || 'pending', priority: priority || 'medium', category: category || null, dueDate: dueDate ? new Date(dueDate) : null },
-    });
-    res.status(201).json(task);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create task.' });
-  }
-});
+router.post(
+  "/",
+  authMiddleware,
+  validate(createTaskSchema),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { title, description, status, priority, category, dueDate } =
+        req.body;
+      if (!title) {
+        res.status(400).json({ error: "Title is required." });
+        return;
+      }
+      const task = await prisma.task.create({
+        data: {
+          userId: req.userId!,
+          title,
+          description: description || null,
+          status: status || "pending",
+          priority: priority || "medium",
+          category: category || null,
+          dueDate: dueDate ? new Date(dueDate) : null,
+        },
+      });
+      res.status(201).json(task);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create task." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -127,20 +174,39 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
  *       404:
  *         description: Not found
  */
-router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { title, description, status, priority, category, dueDate } = req.body;
-    const result = await prisma.task.updateMany({
-      where: { id: req.params.id, userId: req.userId! },
-      data: { ...(title !== undefined && { title }), ...(description !== undefined && { description }), ...(status !== undefined && { status }), ...(priority !== undefined && { priority }), ...(category !== undefined && { category }), ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }) },
-    });
-    if (result.count === 0) { res.status(404).json({ error: 'Not found.' }); return; }
-    const updated = await prisma.task.findUnique({ where: { id: req.params.id } });
-    res.json(updated);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update task.' });
-  }
-});
+router.put(
+  "/:id",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { title, description, status, priority, category, dueDate } =
+        req.body;
+      const result = await prisma.task.updateMany({
+        where: { id: req.params.id, userId: req.userId! },
+        data: {
+          ...(title !== undefined && { title }),
+          ...(description !== undefined && { description }),
+          ...(status !== undefined && { status }),
+          ...(priority !== undefined && { priority }),
+          ...(category !== undefined && { category }),
+          ...(dueDate !== undefined && {
+            dueDate: dueDate ? new Date(dueDate) : null,
+          }),
+        },
+      });
+      if (result.count === 0) {
+        res.status(404).json({ error: "Not found." });
+        return;
+      }
+      const updated = await prisma.task.findUnique({
+        where: { id: req.params.id },
+      });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update task." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -168,14 +234,23 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
  *       404:
  *         description: Not found
  */
-router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const result = await prisma.task.deleteMany({ where: { id: req.params.id, userId: req.userId! } });
-    if (result.count === 0) { res.status(404).json({ error: 'Not found.' }); return; }
-    res.json({ message: 'Task deleted.' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete task.' });
-  }
-});
+router.delete(
+  "/:id",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const result = await prisma.task.deleteMany({
+        where: { id: req.params.id, userId: req.userId! },
+      });
+      if (result.count === 0) {
+        res.status(404).json({ error: "Not found." });
+        return;
+      }
+      res.json({ message: "Task deleted." });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete task." });
+    }
+  },
+);
 
 export default router;

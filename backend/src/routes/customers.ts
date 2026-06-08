@@ -1,6 +1,9 @@
-import { Router, Response } from 'express';
-import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import prisma from '../config/db.js';
+import { Router, Response } from "express";
+import { authMiddleware, AuthRequest } from "../middleware/auth.js";
+import { validate } from "../middleware/validate.js";
+import { createCustomerSchema } from "../validation/schemas.js";
+import { getPagination, paginatedResponse } from "../utils/pagination.js";
+import prisma from "../config/db.js";
 
 /**
  * @swagger
@@ -37,27 +40,48 @@ const router = Router();
  *       401:
  *         description: Unauthorized
  */
-router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { search } = req.query;
-    const where: any = { userId: req.userId! };
-    if (search) {
-      where.OR = [
-        { name: { contains: search as string, mode: 'insensitive' } },
-        { email: { contains: search as string, mode: 'insensitive' } },
-        { phone: { contains: search as string } },
-      ];
+router.get(
+  "/",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { search } = req.query;
+      const where: any = { userId: req.userId! };
+      if (search) {
+        where.OR = [
+          { name: { contains: search as string, mode: "insensitive" } },
+          { email: { contains: search as string, mode: "insensitive" } },
+          { phone: { contains: search as string } },
+        ];
+      }
+
+      const pagination = getPagination(req);
+
+      if (pagination) {
+        const [customers, total] = await Promise.all([
+          prisma.customer.findMany({
+            where,
+            include: { _count: { select: { appointments: true } } },
+            orderBy: { name: "asc" },
+            skip: pagination.skip,
+            take: pagination.take,
+          }),
+          prisma.customer.count({ where }),
+        ]);
+        res.json(paginatedResponse(customers, total, pagination));
+      } else {
+        const customers = await prisma.customer.findMany({
+          where,
+          include: { _count: { select: { appointments: true } } },
+          orderBy: { name: "asc" },
+        });
+        res.json(customers);
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch customers." });
     }
-    const customers = await prisma.customer.findMany({
-      where,
-      include: { _count: { select: { appointments: true } } },
-      orderBy: { name: 'asc' },
-    });
-    res.json(customers);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch customers.' });
-  }
-});
+  },
+);
 
 /**
  * @swagger
@@ -94,19 +118,28 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
  *       404:
  *         description: Customer not found
  */
-router.get('/:id/history', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const customer = await prisma.customer.findFirst({ where: { id: req.params.id, userId: req.userId! } });
-    if (!customer) { res.status(404).json({ error: 'Not found.' }); return; }
-    const appointments = await prisma.appointment.findMany({
-      where: { customerId: req.params.id, userId: req.userId! },
-      orderBy: { startTime: 'desc' },
-    });
-    res.json({ customer, appointments, totalVisits: appointments.length });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch history.' });
-  }
-});
+router.get(
+  "/:id/history",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const customer = await prisma.customer.findFirst({
+        where: { id: req.params.id, userId: req.userId! },
+      });
+      if (!customer) {
+        res.status(404).json({ error: "Not found." });
+        return;
+      }
+      const appointments = await prisma.appointment.findMany({
+        where: { customerId: req.params.id, userId: req.userId! },
+        orderBy: { startTime: "desc" },
+      });
+      res.json({ customer, appointments, totalVisits: appointments.length });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch history." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -134,18 +167,25 @@ router.get('/:id/history', authMiddleware, async (req: AuthRequest, res: Respons
  *       404:
  *         description: Not found
  */
-router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const customer = await prisma.customer.findFirst({
-      where: { id: req.params.id, userId: req.userId! },
-      include: { appointments: { orderBy: { startTime: 'desc' }, take: 20 } },
-    });
-    if (!customer) { res.status(404).json({ error: 'Not found.' }); return; }
-    res.json(customer);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch customer.' });
-  }
-});
+router.get(
+  "/:id",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const customer = await prisma.customer.findFirst({
+        where: { id: req.params.id, userId: req.userId! },
+        include: { appointments: { orderBy: { startTime: "desc" }, take: 20 } },
+      });
+      if (!customer) {
+        res.status(404).json({ error: "Not found." });
+        return;
+      }
+      res.json(customer);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch customer." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -173,18 +213,33 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
  *       401:
  *         description: Unauthorized
  */
-router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { name, email, phone, telegramChatId, notes } = req.body;
-    if (!name) { res.status(400).json({ error: 'Name is required.' }); return; }
-    const customer = await prisma.customer.create({
-      data: { userId: req.userId!, name, email: email || null, phone: phone || null, telegramChatId: telegramChatId || null, notes: notes || null },
-    });
-    res.status(201).json(customer);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create customer.' });
-  }
-});
+router.post(
+  "/",
+  authMiddleware,
+  validate(createCustomerSchema),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, email, phone, telegramChatId, notes } = req.body;
+      if (!name) {
+        res.status(400).json({ error: "Name is required." });
+        return;
+      }
+      const customer = await prisma.customer.create({
+        data: {
+          userId: req.userId!,
+          name,
+          email: email || null,
+          phone: phone || null,
+          telegramChatId: telegramChatId || null,
+          notes: notes || null,
+        },
+      });
+      res.status(201).json(customer);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create customer." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -218,20 +273,34 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
  *       404:
  *         description: Not found
  */
-router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { name, email, phone, notes } = req.body;
-    const result = await prisma.customer.updateMany({
-      where: { id: req.params.id, userId: req.userId! },
-      data: { ...(name !== undefined && { name }), ...(email !== undefined && { email }), ...(phone !== undefined && { phone }), ...(notes !== undefined && { notes }) },
-    });
-    if (result.count === 0) { res.status(404).json({ error: 'Not found.' }); return; }
-    const updated = await prisma.customer.findUnique({ where: { id: req.params.id } });
-    res.json(updated);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update customer.' });
-  }
-});
+router.put(
+  "/:id",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, email, phone, notes } = req.body;
+      const result = await prisma.customer.updateMany({
+        where: { id: req.params.id, userId: req.userId! },
+        data: {
+          ...(name !== undefined && { name }),
+          ...(email !== undefined && { email }),
+          ...(phone !== undefined && { phone }),
+          ...(notes !== undefined && { notes }),
+        },
+      });
+      if (result.count === 0) {
+        res.status(404).json({ error: "Not found." });
+        return;
+      }
+      const updated = await prisma.customer.findUnique({
+        where: { id: req.params.id },
+      });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update customer." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -259,14 +328,23 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
  *       404:
  *         description: Not found
  */
-router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const result = await prisma.customer.deleteMany({ where: { id: req.params.id, userId: req.userId! } });
-    if (result.count === 0) { res.status(404).json({ error: 'Not found.' }); return; }
-    res.json({ message: 'Customer deleted.' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete customer.' });
-  }
-});
+router.delete(
+  "/:id",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const result = await prisma.customer.deleteMany({
+        where: { id: req.params.id, userId: req.userId! },
+      });
+      if (result.count === 0) {
+        res.status(404).json({ error: "Not found." });
+        return;
+      }
+      res.json({ message: "Customer deleted." });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete customer." });
+    }
+  },
+);
 
 export default router;

@@ -107,14 +107,18 @@ momentum-monorepo/
 │   │   ├── services/     # AI, inventory sync
 │   │   ├── middleware/   # Auth JWT middleware
 │   │   └── config/       # DB, env, swagger
+│   ├── modules/          # Module definitions (JSON)
 │   └── prisma/           # Schema and migrations
 ├── frontend/             # React + Vite + MUI
 │   └── src/
 │       ├── pages/        # Feature pages
-│       ├── components/   # Shared components
-│       ├── contexts/     # Auth context
+│       ├── components/   # Shared components (Sidebar, Layout, CommandBar)
+│       ├── contexts/     # Auth + Theme contexts
 │       └── api/          # Axios client
-└── docker-compose.yml
+├── docker-compose.yml    # Postgres + backend + frontend
+├── package.json          # Monorepo root (npm workspaces)
+├── README.md
+└── TODO.md
 ```
 
 ---

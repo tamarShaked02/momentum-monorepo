@@ -1,43 +1,46 @@
 version: "3.8"
 
 services:
-  core:
-    build:
-      context: ./services/core
-      dockerfile: Dockerfile
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: momentum
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build: ./backend
     ports:
       - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
-      - NODE_ENV=development
-      - PORT=3000
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - USE_MOCK_AI=${USE_MOCK_AI:-true}
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/momentum
+      JWT_SECRET: ${JWT_SECRET:-momentum-secret}
+      PORT: 3000
+      USE_MOCK_AI: ${USE_MOCK_AI:-true}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     volumes:
-      # Mount source code for development (hot reload)
-      - ./services/core:/app
-      - /app/node_modules
-    networks:
-      - momentum-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      - ./backend/src:/app/src
 
-networks:
-  momentum-network:
-    driver: bridge
-# For future services, add them here following the same pattern:
-# Example:
-#  crm:
-#    build:
-#      context: ./services/crm
-#      dockerfile: Dockerfile
-#    ports:
-#      - "3001:3001"
-#    environment:
-#      - NODE_ENV=development
-#      - PORT=3001
-#    networks:
-#      - momentum-network
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://localhost:3000/api
+
+volumes:
+  pgdata:

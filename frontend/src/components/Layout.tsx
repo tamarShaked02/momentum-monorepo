@@ -16,7 +16,8 @@ const Layout: React.FC = () => {
     <Box
       sx={{
         display: "flex",
-        minHeight: "100vh",
+        height: "100vh",
+        overflow: "hidden",
         background: isDark
           ? "linear-gradient(145deg, #0a0e27 0%, #111638 50%, #0d1130 100%)"
           : "#f2f2f7",
@@ -34,13 +35,15 @@ const Layout: React.FC = () => {
           flexDirection: "column",
           ml: isMobile ? 0 : `${DRAWER_WIDTH}px`,
           transition: "margin 0.3s ease",
+          height: "100vh",
+          overflow: "hidden",
         }}
       >
         <CommandBar onMenuClick={() => setMobileOpen(true)} />
         <Box
           component="main"
           sx={{
-            flexGrow: 1,
+            flex: 1,
             p: { xs: 2, sm: 3 },
             pt: { xs: 10, sm: 11 },
             overflow: "auto",

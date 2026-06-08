@@ -1,33 +1,23 @@
 {
   "name": "momentum-monorepo",
   "version": "1.0.0",
-  "description": "Momentum AI Onboarding Monorepo",
-  "type": "module",
+  "private": true,
+  "description": "Momentum — AI-powered business management platform",
   "workspaces": [
-    "services/*",
-    "packages/*"
+    "backend",
+    "frontend"
   ],
   "scripts": {
-    "start": "npm run start --workspace=services/core",
-    "dev": "npm run dev --workspace=services/core",
-    "start:core": "npm run start --workspace=services/core",
-    "dev:core": "npm run dev --workspace=services/core",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build": "npm run build --workspaces --if-present",
-    "build:core": "npm run build --workspace=services/core",
-    "test": "npm run test --workspaces --if-present",
-    "docker:build": "docker-compose build",
-    "docker:up": "docker-compose up",
-    "docker:down": "docker-compose down",
-    "docker:dev": "docker-compose up --build"
+    "lint": "npm run lint --workspaces --if-present",
+    "db:migrate": "npm run db:migrate --workspace=backend",
+    "db:generate": "npm run db:generate --workspace=backend",
+    "docker:up": "docker-compose up --build",
+    "docker:down": "docker-compose down"
   },
-  "keywords": [
-    "monorepo",
-    "microservices",
-    "ai",
-    "onboarding"
-  ],
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
     "concurrently": "^8.2.2"
   }

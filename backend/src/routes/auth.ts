@@ -1,9 +1,10 @@
-import { Router, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import prisma from '../config/db.js';
-import { env } from '../config/env.js';
-import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { Router, Response } from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import prisma from "../config/db.js";
+import { env } from "../config/env.js";
+import { authMiddleware, AuthRequest } from "../middleware/auth.js";
+import { authLimiter } from "../middleware/rateLimit.js";
 
 const router = Router();
 
@@ -47,46 +48,54 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/register', async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { email, password, businessName } = req.body;
+router.post(
+  "/register",
+  authLimiter,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { email, password, businessName } = req.body;
 
-    if (!email || !password) {
-      res.status(400).json({ error: 'Email and password are required.' });
-      return;
+      if (!email || !password) {
+        res.status(400).json({ error: "Email and password are required." });
+        return;
+      }
+
+      const existingUser = await prisma.user.findUnique({ where: { email } });
+      if (existingUser) {
+        res
+          .status(409)
+          .json({ error: "A user with this email already exists." });
+        return;
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 12);
+      const user = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          businessName: businessName || null,
+        },
+      });
+
+      const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
+        expiresIn: "7d",
+      });
+
+      res.status(201).json({
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          businessName: user.businessName,
+          businessType: user.businessType,
+        },
+      });
+    } catch (error) {
+      console.error("Register error:", error);
+      res.status(500).json({ error: "Failed to register user." });
     }
-
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      res.status(409).json({ error: 'A user with this email already exists.' });
-      return;
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 12);
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        businessName: businessName || null,
-      },
-    });
-
-    const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, { expiresIn: '7d' });
-
-    res.status(201).json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        businessName: user.businessName,
-        businessType: user.businessType,
-      },
-    });
-  } catch (error) {
-    console.error('Register error:', error);
-    res.status(500).json({ error: 'Failed to register user.' });
-  }
-});
+  },
+);
 
 /**
  * @swagger
@@ -121,48 +130,54 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { email, password } = req.body;
+router.post(
+  "/login",
+  authLimiter,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { email, password } = req.body;
 
-    if (!email || !password) {
-      res.status(400).json({ error: 'Email and password are required.' });
-      return;
+      if (!email || !password) {
+        res.status(400).json({ error: "Email and password are required." });
+        return;
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { email },
+        include: { moduleConfig: true },
+      });
+
+      if (!user) {
+        res.status(401).json({ error: "Invalid email or password." });
+        return;
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        res.status(401).json({ error: "Invalid email or password." });
+        return;
+      }
+
+      const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
+        expiresIn: "7d",
+      });
+
+      res.json({
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          businessName: user.businessName,
+          businessType: user.businessType,
+          moduleConfig: user.moduleConfig,
+        },
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Failed to log in." });
     }
-
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: { moduleConfig: true },
-    });
-
-    if (!user) {
-      res.status(401).json({ error: 'Invalid email or password.' });
-      return;
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      res.status(401).json({ error: 'Invalid email or password.' });
-      return;
-    }
-
-    const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, { expiresIn: '7d' });
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        businessName: user.businessName,
-        businessType: user.businessType,
-        moduleConfig: user.moduleConfig,
-      },
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Failed to log in.' });
-  }
-});
+  },
+);
 
 /**
  * @swagger
@@ -190,29 +205,33 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
  *       404:
  *         description: User not found
  */
-router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.userId },
-      include: { moduleConfig: true },
-    });
+router.get(
+  "/me",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: req.userId },
+        include: { moduleConfig: true },
+      });
 
-    if (!user) {
-      res.status(404).json({ error: 'User not found.' });
-      return;
+      if (!user) {
+        res.status(404).json({ error: "User not found." });
+        return;
+      }
+
+      res.json({
+        id: user.id,
+        email: user.email,
+        businessName: user.businessName,
+        businessType: user.businessType,
+        moduleConfig: user.moduleConfig,
+      });
+    } catch (error) {
+      console.error("Get me error:", error);
+      res.status(500).json({ error: "Failed to retrieve user profile." });
     }
-
-    res.json({
-      id: user.id,
-      email: user.email,
-      businessName: user.businessName,
-      businessType: user.businessType,
-      moduleConfig: user.moduleConfig,
-    });
-  } catch (error) {
-    console.error('Get me error:', error);
-    res.status(500).json({ error: 'Failed to retrieve user profile.' });
-  }
-});
+  },
+);
 
 export default router;

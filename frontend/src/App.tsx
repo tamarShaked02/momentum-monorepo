@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext.tsx";
 import { AuthProvider } from "./contexts/AuthContext";
+import { SnackbarProvider } from "./contexts/SnackbarContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
@@ -18,36 +19,38 @@ import AnalyticsPage from "./pages/AnalyticsPage";
 const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            {/* Public */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/onboarding" element={<OnboardingPage />} />
+      <SnackbarProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              {/* Public */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/onboarding" element={<OnboardingPage />} />
 
-            {/* Protected */}
-            <Route
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/appointments" element={<AppointmentsPage />} />
-              <Route path="/crm" element={<CRMPage />} />
-              <Route path="/inventory" element={<InventoryPage />} />
-              <Route path="/tasks" element={<TasksPage />} />
-              <Route path="/marketing" element={<MarketingPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
-            </Route>
+              {/* Protected */}
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/appointments" element={<AppointmentsPage />} />
+                <Route path="/crm" element={<CRMPage />} />
+                <Route path="/inventory" element={<InventoryPage />} />
+                <Route path="/tasks" element={<TasksPage />} />
+                <Route path="/marketing" element={<MarketingPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
+              </Route>
 
-            {/* Default */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
+              {/* Default */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </SnackbarProvider>
     </ThemeProvider>
   );
 };

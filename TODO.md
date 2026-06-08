@@ -1,8 +1,21 @@
 # Momentum — TODO
 
-## In Progress
+## Completed
 
-- [ ] Batch delete for customers, appointments, inventory
+- [x] Light / dark mode toggle (sidebar)
+- [x] Edit inventory item details (name, SKU, category, price)
+- [x] Delete inventory items
+- [x] Drag-and-drop between kanban columns
+- [x] Date range filter (analytics)
+- [x] Revenue/profit tracking (analytics)
+- [x] Global toast notifications (replaced alert/confirm)
+- [x] Customer search / filter in the table
+- [x] Campaign status update (draft → active → completed)
+- [x] Appointment price field + profit calculation
+- [x] Customer edit/delete
+- [x] Appointment edit/delete
+- [x] Customer profile drawer improvements
+- [x] Appointment notes visible in CRM
 
 ---
 
@@ -10,14 +23,11 @@
 
 ### General
 
-- [v] Light / dark mode toggle (sidebar) ✅ added
 - [ ] Mobile responsive layout improvements
-- [ ] Global loading/error toast notifications (replace `alert()` calls)
 - [ ] Empty state illustrations for all pages
 
 ### Customers (CRM)
 
-- [ ] Customer search / filter in the table
 - [ ] Bulk import customers (CSV)
 - [ ] Customer tags / segmentation
 
@@ -29,27 +39,21 @@
 
 ### Inventory
 
-- [ ] Edit inventory item details (name, SKU, category, price)
-- [ ] Delete inventory items
 - [ ] Inventory history log view per item
 - [ ] CSV export
 
 ### Tasks
 
-- [ ] Drag-and-drop between kanban columns
 - [ ] Task due date notifications
 - [ ] Task assignment (multi-user)
 
 ### Marketing
 
-- [ ] Campaign status update (draft → active → completed)
 - [ ] Schedule campaign send date
 - [ ] Campaign analytics (open rate, click rate placeholders)
 
 ### Analytics
 
-- [ ] Date range filter
-- [ ] Revenue tracking
 - [ ] Export reports (PDF/CSV)
 
 ### Settings
@@ -62,9 +66,9 @@
 
 ## Backend
 
-- [ ] Pagination on all list endpoints
-- [ ] Rate limiting
-- [ ] Input validation (zod or class-validator)
+- [x] Pagination on all list endpoints
+- [x] Rate limiting
+- [x] Input validation (zod)
 - [ ] Refresh token support
 - [ ] Telegram bot — booking flow via chat
 - [ ] Email notifications (appointment confirmations)

@@ -22,15 +22,12 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
   type DragStartEvent,
   type DragEndEvent,
+  type DragOverEvent,
+  useDroppable,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import api from "../api/client";
 import type { Task } from "../types";
@@ -47,15 +44,13 @@ const priorityColors: Record<string, string> = {
   low: "#66BB6A",
 };
 
-// ── Sortable Task Card ──────────────────────────────────────────────────────
+// ── Task Card ───────────────────────────────────────────────────────────────
 
-interface TaskCardProps {
+const TaskCard: React.FC<{
   task: Task;
   onDelete: (id: string) => void;
   overlay?: boolean;
-}
-
-const TaskCard: React.FC<TaskCardProps> = ({ task, onDelete, overlay }) => {
+}> = ({ task, onDelete, overlay }) => {
   const {
     attributes,
     listeners,
@@ -73,11 +68,18 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onDelete, overlay }) => {
       sx={{
         borderRadius: 2,
         cursor: "grab",
-        opacity: isDragging && !overlay ? 0.35 : 1,
+        flexShrink: 0,
+        opacity: isDragging && !overlay ? 0.3 : 1,
         transform: CSS.Transform.toString(transform),
-        transition,
-        boxShadow: overlay ? "0 8px 24px rgba(0,0,0,0.4)" : undefined,
-        "&:hover": { transform: isDragging ? undefined : "translateY(-1px)" },
+        transition: transition || "transform 0.15s ease, box-shadow 0.15s ease",
+        boxShadow: overlay ? "0 8px 24px rgba(0,0,0,0.4)" : "none",
+        "&:hover": {
+          boxShadow:
+            "0 4px 20px rgba(79,195,247,0.25), 0 0 0 1px rgba(79,195,247,0.1)",
+          transform: isDragging
+            ? CSS.Transform.toString(transform)
+            : "translateY(-2px)",
+        },
       }}
     >
       <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
@@ -158,66 +160,89 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onDelete, overlay }) => {
   );
 };
 
-// ── Column ──────────────────────────────────────────────────────────────────
+// ── Droppable Column ────────────────────────────────────────────────────────
 
-interface ColumnProps {
+const DroppableColumn: React.FC<{
   col: { key: string; label: string; color: string };
   tasks: Task[];
   onDelete: (id: string) => void;
-}
+  isOver: boolean;
+}> = ({ col, tasks, onDelete, isOver }) => {
+  const { setNodeRef } = useDroppable({ id: col.key });
 
-const Column: React.FC<ColumnProps> = ({ col, tasks, onDelete }) => (
-  <Box>
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, px: 1 }}>
-      <Box
-        sx={{
-          width: 10,
-          height: 10,
-          borderRadius: "50%",
-          background: col.color,
-        }}
-      />
-      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-        {col.label}
-      </Typography>
-      <Chip
-        label={tasks.length}
-        size="small"
-        sx={{ ml: "auto", background: `${col.color}22`, color: col.color }}
-      />
-    </Box>
-    <SortableContext
-      items={tasks.map((t) => t.id)}
-      strategy={verticalListSortingStrategy}
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        minWidth: 0,
+        minHeight: 0,
+      }}
     >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, px: 1 }}>
+        <Box
+          sx={{
+            width: 10,
+            height: 10,
+            borderRadius: "50%",
+            background: col.color,
+          }}
+        />
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+          {col.label}
+        </Typography>
+        <Chip
+          label={tasks.length}
+          size="small"
+          sx={{ ml: "auto", background: `${col.color}22`, color: col.color }}
+        />
+      </Box>
       <Box
+        ref={setNodeRef}
         sx={{
+          flex: 1,
+          borderRadius: 2,
+          background: isOver
+            ? "rgba(79,195,247,0.06)"
+            : "rgba(255,255,255,0.02)",
+          border: isOver
+            ? "2px dashed rgba(79,195,247,0.3)"
+            : "1px dashed rgba(255,255,255,0.06)",
+          overflow: "hidden",
+          minHeight: 0,
           display: "flex",
           flexDirection: "column",
-          gap: 1.5,
-          minHeight: 200,
           p: 1.5,
-          borderRadius: 2,
-          background: "rgba(255,255,255,0.02)",
-          border: "1px dashed rgba(255,255,255,0.06)",
+          transition: "background 0.2s, border 0.2s",
         }}
       >
-        {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} onDelete={onDelete} />
-        ))}
-        {tasks.length === 0 && (
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ textAlign: "center", py: 4, opacity: 0.5 }}
-          >
-            No tasks
-          </Typography>
-        )}
+        <Box
+          sx={{
+            flex: 1,
+            overflow: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.5,
+          }}
+        >
+          {tasks.map((task) => (
+            <TaskCard key={task.id} task={task} onDelete={onDelete} />
+          ))}
+          {tasks.length === 0 && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ textAlign: "center", py: 4, opacity: 0.5 }}
+            >
+              No tasks
+            </Typography>
+          )}
+        </Box>
       </Box>
-    </SortableContext>
-  </Box>
-);
+    </Box>
+  );
+};
 
 // ── Page ────────────────────────────────────────────────────────────────────
 
@@ -226,6 +251,7 @@ const TasksPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [overColumn, setOverColumn] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -272,20 +298,41 @@ const TasksPage: React.FC = () => {
   };
 
   const handleDragStart = (event: DragStartEvent) => {
-    const task = tasks.find((t) => t.id === event.active.id);
-    setActiveTask(task ?? null);
+    setActiveTask(tasks.find((t) => t.id === event.active.id) ?? null);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    if (!over) {
+      setOverColumn(null);
+      return;
+    }
+    // Check if over a column directly
+    const col = statusColumns.find((c) => c.key === over.id);
+    if (col) {
+      setOverColumn(col.key);
+      return;
+    }
+    // Over a task — find which column that task is in
+    const overTask = tasks.find((t) => t.id === over.id);
+    setOverColumn(overTask?.status ?? null);
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveTask(null);
+    setOverColumn(null);
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over) return;
 
-    // Determine target column: over could be a column id or a task id
-    const targetCol = statusColumns.find((c) => c.key === over.id);
-    const targetStatus = targetCol
-      ? targetCol.key
-      : tasks.find((t) => t.id === over.id)?.status;
+    // Determine target status
+    let targetStatus: string | undefined;
+    const col = statusColumns.find((c) => c.key === over.id);
+    if (col) {
+      targetStatus = col.key;
+    } else {
+      const overTask = tasks.find((t) => t.id === over.id);
+      targetStatus = overTask?.status;
+    }
 
     const draggedTask = tasks.find((t) => t.id === active.id);
     if (!draggedTask || !targetStatus || draggedTask.status === targetStatus)
@@ -294,7 +341,7 @@ const TasksPage: React.FC = () => {
     // Optimistic update
     setTasks((prev) =>
       prev.map((t) =>
-        t.id === active.id ? { ...t, status: targetStatus } : t,
+        t.id === active.id ? { ...t, status: targetStatus! } : t,
       ),
     );
     await api.put(`/tasks/${active.id}`, { status: targetStatus });
@@ -307,13 +354,21 @@ const TasksPage: React.FC = () => {
 
   return (
     <Fade in timeout={500}>
-      <Box>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          overflow: "hidden",
+        }}
+      >
         <Box
           sx={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            mb: 3,
+            mb: 2,
+            flexShrink: 0,
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -331,24 +386,28 @@ const TasksPage: React.FC = () => {
 
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
           <Box
             sx={{
               display: "grid",
               gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" },
+              gridTemplateRows: "1fr",
               gap: 3,
-              minHeight: 400,
+              flex: 1,
+              minHeight: 0,
+              overflow: "hidden",
             }}
           >
             {statusColumns.map((col) => (
-              <Column
+              <DroppableColumn
                 key={col.key}
                 col={col}
                 tasks={getTasksByStatus(col.key)}
                 onDelete={handleDelete}
+                isOver={overColumn === col.key}
               />
             ))}
           </Box>
@@ -364,7 +423,9 @@ const TasksPage: React.FC = () => {
           onClose={() => setDialogOpen(false)}
           maxWidth="sm"
           fullWidth
-          PaperProps={{ sx: { background: "#1a1f3a", borderRadius: 4 } }}
+          slotProps={{
+            paper: { sx: { background: "#1a1f3a", borderRadius: 4 } },
+          }}
         >
           <DialogTitle>Add Task</DialogTitle>
           <DialogContent

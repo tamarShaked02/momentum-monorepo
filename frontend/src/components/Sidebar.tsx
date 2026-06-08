@@ -198,7 +198,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </ListItemIcon>
             <ListItemText
               primary={item.label}
-              primaryTypographyProps={{ fontSize: "0.9rem" }}
+              slotProps={{ primary: { sx: { fontSize: "0.9rem" } } }}
             />
           </ListItemButton>
         ))}
@@ -222,7 +222,9 @@ const Sidebar: React.FC<SidebarProps> = ({
           </ListItemIcon>
           <ListItemText
             primary="Logout"
-            primaryTypographyProps={{ fontSize: "0.9rem", color: "#FF6B6B" }}
+            slotProps={{
+              primary: { sx: { fontSize: "0.9rem", color: "#FF6B6B" } },
+            }}
           />
         </ListItemButton>
       </List>
