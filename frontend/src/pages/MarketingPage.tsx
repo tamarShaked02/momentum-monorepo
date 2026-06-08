@@ -15,6 +15,8 @@ import {
   Tab,
   Tabs,
   IconButton,
+  MenuItem,
+  Select,
 } from "@mui/material";
 import {
   Campaign,
@@ -25,6 +27,7 @@ import {
   Delete,
 } from "@mui/icons-material";
 import api from "../api/client";
+import { useSnackbar } from "../contexts/SnackbarContext";
 import type { MarketingCampaign } from "../types";
 
 const goalLabels: Record<string, string> = {
@@ -46,6 +49,7 @@ const MarketingPage: React.FC = () => {
   const [saved, setSaved] = useState(false);
   const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(false);
+  const { showError, showConfirm } = useSnackbar();
 
   const goals = [
     { value: "fill_schedule", label: "Fill Empty Slots", emoji: "📅" },
@@ -77,7 +81,7 @@ const MarketingPage: React.FC = () => {
       setContent(res.data);
       setStep(2);
     } catch {
-      alert("Failed to generate content.");
+      showError("Failed to generate content.");
     } finally {
       setLoading(false);
     }
@@ -99,15 +103,24 @@ const MarketingPage: React.FC = () => {
       });
       setSaved(true);
     } catch {
-      alert("Failed to save campaign.");
+      showError("Failed to save campaign.");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
+    const confirmed = await showConfirm("Delete this campaign?");
+    if (!confirmed) return;
     await api.delete(`/marketing/automations/${id}`);
     fetchCampaigns();
+  };
+
+  const handleStatusChange = async (id: string, status: string) => {
+    await api.put(`/marketing/automations/${id}`, { status });
+    setCampaigns((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, status } : c)),
+    );
   };
 
   const statusColor: Record<string, string> = {
@@ -505,19 +518,34 @@ const MarketingPage: React.FC = () => {
                               mb: 1,
                             }}
                           >
-                            <Typography variant="h6" fontWeight={600}>
+                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
                               {c.name}
                             </Typography>
-                            <Chip
-                              label={c.status}
+                            <Select
+                              value={c.status}
                               size="small"
+                              onChange={(e) =>
+                                handleStatusChange(c.id, e.target.value)
+                              }
                               sx={{
-                                background: `${statusColor[c.status] ?? "#999"}22`,
-                                color: statusColor[c.status] ?? "#999",
+                                minWidth: 120,
+                                height: 28,
+                                fontSize: "0.75rem",
                                 fontWeight: 600,
                                 textTransform: "capitalize",
+                                color: statusColor[c.status] ?? "#999",
+                                "& .MuiOutlinedInput-notchedOutline": {
+                                  borderColor: `${statusColor[c.status] ?? "#999"}44`,
+                                },
+                                "&:hover .MuiOutlinedInput-notchedOutline": {
+                                  borderColor: statusColor[c.status] ?? "#999",
+                                },
                               }}
-                            />
+                            >
+                              <MenuItem value="draft">Draft</MenuItem>
+                              <MenuItem value="active">Active</MenuItem>
+                              <MenuItem value="completed">Completed</MenuItem>
+                            </Select>
                           </Box>
                           {c.goal && (
                             <Typography

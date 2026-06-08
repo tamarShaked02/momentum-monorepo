@@ -10,25 +10,32 @@ import {
   TextField,
   Fade,
   Chip,
+  IconButton,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
-import { Add, Inventory2 } from "@mui/icons-material";
+import { Add, Inventory2, Edit, Delete } from "@mui/icons-material";
 import api from "../api/client";
+import { useSnackbar } from "../contexts/SnackbarContext";
 import type { InventoryItem } from "../types";
+
+const emptyForm = {
+  name: "",
+  sku: "",
+  quantity: 0,
+  lowThreshold: 5,
+  price: 0,
+  category: "",
+};
 
 const InventoryPage: React.FC = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    sku: "",
-    quantity: 0,
-    lowThreshold: 5,
-    price: 0,
-    category: "",
-  });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({ ...emptyForm });
+  const [selected, setSelected] = useState<string[]>([]);
+  const { showConfirm } = useSnackbar();
 
   const fetchItems = () => {
     api
@@ -43,18 +50,50 @@ const InventoryPage: React.FC = () => {
     fetchItems();
   }, []);
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (!form.name) return;
-    await api.post("/inventory", form);
+    if (editingId) {
+      await api.put(`/inventory/${editingId}`, form);
+    } else {
+      await api.post("/inventory", form);
+    }
     setDialogOpen(false);
+    setEditingId(null);
+    setForm({ ...emptyForm });
+    fetchItems();
+  };
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm({ ...emptyForm });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (item: InventoryItem) => {
+    setEditingId(item.id);
     setForm({
-      name: "",
-      sku: "",
-      quantity: 0,
-      lowThreshold: 5,
-      price: 0,
-      category: "",
+      name: item.name,
+      sku: item.sku ?? "",
+      quantity: item.quantity,
+      lowThreshold: item.lowThreshold,
+      price: item.price ? Number(item.price) : 0,
+      category: item.category ?? "",
     });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    const confirmed = await showConfirm("Delete this inventory item?");
+    if (!confirmed) return;
+    await api.delete(`/inventory/${id}`);
+    fetchItems();
+  };
+
+  const handleBatchDelete = async () => {
+    const confirmed = await showConfirm(`Delete ${selected.length} item(s)?`);
+    if (!confirmed) return;
+    await Promise.all(selected.map((id) => api.delete(`/inventory/${id}`)));
+    setSelected([]);
     fetchItems();
   };
 
@@ -135,11 +174,35 @@ const InventoryPage: React.FC = () => {
         </Box>
       ),
     },
+    {
+      field: "manage",
+      headerName: "Actions",
+      width: 100,
+      sortable: false,
+      renderCell: (params: any) => (
+        <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
+          <IconButton
+            size="small"
+            onClick={() => openEdit(params.row)}
+            sx={{ color: "#4FC3F7" }}
+          >
+            <Edit fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => handleDelete(params.row.id)}
+            sx={{ color: "#FF6B6B" }}
+          >
+            <Delete fontSize="small" />
+          </IconButton>
+        </Box>
+      ),
+    },
   ];
 
   return (
     <Fade in timeout={500}>
-      <Box>
+      <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <Box
           sx={{
             display: "flex",
@@ -152,14 +215,21 @@ const InventoryPage: React.FC = () => {
             <Inventory2 sx={{ color: "#FFB74D", fontSize: 32 }} />
             <Typography variant="h4">Inventory</Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => setDialogOpen(true)}
-          >
+          <Button variant="contained" startIcon={<Add />} onClick={openCreate}>
             Add Item
           </Button>
         </Box>
+        {selected.length > 0 && (
+          <Button
+            size="small"
+            color="error"
+            variant="outlined"
+            onClick={handleBatchDelete}
+            sx={{ mb: 2 }}
+          >
+            Delete {selected.length} selected
+          </Button>
+        )}
 
         <Box
           sx={{
@@ -167,14 +237,19 @@ const InventoryPage: React.FC = () => {
             borderRadius: 2,
             border: "1px solid rgba(255,255,255,0.08)",
             overflow: "hidden",
+            flex: 1,
+            minHeight: 0,
           }}
         >
           <DataGrid
             rows={items}
             columns={columns}
             loading={loading}
-            autoHeight
-            pageSizeOptions={[10, 25]}
+            checkboxSelection
+            onRowSelectionModelChange={(model: any) =>
+              setSelected(Array.from(model?.ids ?? []) as string[])
+            }
+            pageSizeOptions={[10]}
             initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
             sx={{
               border: "none",
@@ -194,9 +269,13 @@ const InventoryPage: React.FC = () => {
           onClose={() => setDialogOpen(false)}
           maxWidth="sm"
           fullWidth
-          PaperProps={{ sx: { background: "#1a1f3a", borderRadius: 4 } }}
+          slotProps={{
+            paper: { sx: { background: "#1a1f3a", borderRadius: 4 } },
+          }}
         >
-          <DialogTitle>Add Inventory Item</DialogTitle>
+          <DialogTitle>
+            {editingId ? "Edit Inventory Item" : "Add Inventory Item"}
+          </DialogTitle>
           <DialogContent
             sx={{
               display: "flex",
@@ -256,8 +335,8 @@ const InventoryPage: React.FC = () => {
           </DialogContent>
           <DialogActions sx={{ p: 3 }}>
             <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button variant="contained" onClick={handleCreate}>
-              Add Item
+            <Button variant="contained" onClick={handleSave}>
+              {editingId ? "Save Changes" : "Add Item"}
             </Button>
           </DialogActions>
         </Dialog>

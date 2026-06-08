@@ -18,6 +18,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
 import { Add, CalendarMonth, Edit, Delete } from "@mui/icons-material";
 import api from "../api/client";
+import { useSnackbar } from "../contexts/SnackbarContext";
 import type { Appointment, Customer } from "../types";
 
 const emptyForm = {
@@ -28,6 +29,7 @@ const emptyForm = {
   status: "scheduled",
   source: "manual",
   customerId: "",
+  price: "",
 };
 
 const AppointmentsPage: React.FC = () => {
@@ -38,6 +40,8 @@ const AppointmentsPage: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [selected, setSelected] = useState<string[]>([]);
+  const [showPast, setShowPast] = useState(false);
+  const { showConfirm } = useSnackbar();
 
   const fetchAppointments = () => {
     api
@@ -73,16 +77,18 @@ const AppointmentsPage: React.FC = () => {
       status: row.status,
       source: row.source,
       customerId: row.customerId ?? "",
+      price: row.price != null ? String(row.price) : "",
     });
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     if (!form.title || !form.startTime || !form.endTime) return;
+    const payload = { ...form, price: form.price ? Number(form.price) : null };
     if (editingId) {
-      await api.put(`/appointments/${editingId}`, form);
+      await api.put(`/appointments/${editingId}`, payload);
     } else {
-      await api.post("/appointments", form);
+      await api.post("/appointments", payload);
     }
     setDialogOpen(false);
     setForm({ ...emptyForm });
@@ -90,13 +96,17 @@ const AppointmentsPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this appointment?")) return;
+    const confirmed = await showConfirm("Delete this appointment?");
+    if (!confirmed) return;
     await api.delete(`/appointments/${id}`);
     fetchAppointments();
   };
 
   const handleBatchDelete = async () => {
-    if (!window.confirm(`Delete ${selected.length} appointment(s)?`)) return;
+    const confirmed = await showConfirm(
+      `Delete ${selected.length} appointment(s)?`,
+    );
+    if (!confirmed) return;
     await Promise.all(selected.map((id) => api.delete(`/appointments/${id}`)));
     setSelected([]);
     fetchAppointments();
@@ -210,9 +220,15 @@ const AppointmentsPage: React.FC = () => {
   const selectedCustomer =
     customers.find((c) => c.id === form.customerId) ?? null;
 
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const filteredAppointments = showPast
+    ? appointments.filter((a) => new Date(a.startTime) < todayStart)
+    : appointments.filter((a) => new Date(a.startTime) >= todayStart);
+
   return (
     <Fade in timeout={500}>
-      <Box>
+      <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <Box
           sx={{
             display: "flex",
@@ -230,20 +246,52 @@ const AppointmentsPage: React.FC = () => {
           </Button>
         </Box>
 
+        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+          <Button
+            size="small"
+            variant={showPast ? "outlined" : "contained"}
+            onClick={() => setShowPast(false)}
+          >
+            Upcoming
+          </Button>
+          <Button
+            size="small"
+            variant={showPast ? "contained" : "outlined"}
+            onClick={() => setShowPast(true)}
+          >
+            Past
+          </Button>
+          {selected.length > 0 && (
+            <Button
+              size="small"
+              color="error"
+              variant="outlined"
+              onClick={handleBatchDelete}
+            >
+              Delete {selected.length} selected
+            </Button>
+          )}
+        </Box>
+
         <Box
           sx={{
             background: "rgba(26,31,58,0.7)",
             borderRadius: 2,
             border: "1px solid rgba(255,255,255,0.08)",
             overflow: "hidden",
+            flex: 1,
+            minHeight: 0,
           }}
         >
           <DataGrid
-            rows={appointments}
+            rows={filteredAppointments}
             columns={columns}
             loading={loading}
-            autoHeight
-            pageSizeOptions={[10, 25, 50]}
+            checkboxSelection
+            onRowSelectionModelChange={(model: any) =>
+              setSelected(Array.from(model?.ids ?? []) as string[])
+            }
+            pageSizeOptions={[10]}
             initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
             sx={{
               border: "none",
@@ -263,11 +311,13 @@ const AppointmentsPage: React.FC = () => {
           onClose={() => setDialogOpen(false)}
           maxWidth="sm"
           fullWidth
-          PaperProps={{
-            sx: {
-              background: "#1a1f3a",
-              backgroundImage: "none",
-              borderRadius: 4,
+          slotProps={{
+            paper: {
+              sx: {
+                background: "#1a1f3a",
+                backgroundImage: "none",
+                borderRadius: 4,
+              },
             },
           }}
         >
@@ -356,6 +406,14 @@ const AppointmentsPage: React.FC = () => {
                 <MenuItem value="no_show">No Show</MenuItem>
               </TextField>
             )}
+            <TextField
+              label="Price (₪)"
+              type="number"
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: e.target.value })}
+              fullWidth
+              placeholder="Optional"
+            />
             <TextField
               label="Notes"
               value={form.notes}

@@ -1,7 +1,8 @@
-import { Router, Response } from 'express';
-import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import prisma from '../config/db.js';
-import { generateMarketingContent } from '../services/aiService.js';
+import { Router, Response } from "express";
+import { authMiddleware, AuthRequest } from "../middleware/auth.js";
+import { getPagination, paginatedResponse } from "../utils/pagination.js";
+import prisma from "../config/db.js";
+import { generateMarketingContent } from "../services/aiService.js";
 
 /**
  * @swagger
@@ -32,17 +33,37 @@ const router = Router();
  *       401:
  *         description: Unauthorized
  */
-router.get('/automations', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const campaigns = await prisma.marketingCampaign.findMany({
-      where: { userId: req.userId! },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json(campaigns);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch campaigns.' });
-  }
-});
+router.get(
+  "/automations",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const where = { userId: req.userId! };
+      const pagination = getPagination(req);
+
+      if (pagination) {
+        const [campaigns, total] = await Promise.all([
+          prisma.marketingCampaign.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            skip: pagination.skip,
+            take: pagination.take,
+          }),
+          prisma.marketingCampaign.count({ where }),
+        ]);
+        res.json(paginatedResponse(campaigns, total, pagination));
+      } else {
+        const campaigns = await prisma.marketingCampaign.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+        });
+        res.json(campaigns);
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch campaigns." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -70,18 +91,42 @@ router.get('/automations', authMiddleware, async (req: AuthRequest, res: Respons
  *       401:
  *         description: Unauthorized
  */
-router.post('/automations', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { name, goal, channels, smsContent, emailContent, socialContent, scheduledAt } = req.body;
-    if (!name) { res.status(400).json({ error: 'Campaign name is required.' }); return; }
-    const campaign = await prisma.marketingCampaign.create({
-      data: { userId: req.userId!, name, goal: goal || null, channels: channels || [], smsContent: smsContent || null, emailContent: emailContent || null, socialContent: socialContent || null, scheduledAt: scheduledAt ? new Date(scheduledAt) : null },
-    });
-    res.status(201).json(campaign);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create campaign.' });
-  }
-});
+router.post(
+  "/automations",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const {
+        name,
+        goal,
+        channels,
+        smsContent,
+        emailContent,
+        socialContent,
+        scheduledAt,
+      } = req.body;
+      if (!name) {
+        res.status(400).json({ error: "Campaign name is required." });
+        return;
+      }
+      const campaign = await prisma.marketingCampaign.create({
+        data: {
+          userId: req.userId!,
+          name,
+          goal: goal || null,
+          channels: channels || [],
+          smsContent: smsContent || null,
+          emailContent: emailContent || null,
+          socialContent: socialContent || null,
+          scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        },
+      });
+      res.status(201).json(campaign);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create campaign." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -115,20 +160,49 @@ router.post('/automations', authMiddleware, async (req: AuthRequest, res: Respon
  *       404:
  *         description: Not found
  */
-router.put('/automations/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { name, goal, status, channels, smsContent, emailContent, socialContent, scheduledAt } = req.body;
-    const result = await prisma.marketingCampaign.updateMany({
-      where: { id: req.params.id, userId: req.userId! },
-      data: { ...(name !== undefined && { name }), ...(goal !== undefined && { goal }), ...(status !== undefined && { status }), ...(channels !== undefined && { channels }), ...(smsContent !== undefined && { smsContent }), ...(emailContent !== undefined && { emailContent }), ...(socialContent !== undefined && { socialContent }), ...(scheduledAt !== undefined && { scheduledAt: scheduledAt ? new Date(scheduledAt) : null }) },
-    });
-    if (result.count === 0) { res.status(404).json({ error: 'Not found.' }); return; }
-    const updated = await prisma.marketingCampaign.findUnique({ where: { id: req.params.id } });
-    res.json(updated);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update campaign.' });
-  }
-});
+router.put(
+  "/automations/:id",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const {
+        name,
+        goal,
+        status,
+        channels,
+        smsContent,
+        emailContent,
+        socialContent,
+        scheduledAt,
+      } = req.body;
+      const result = await prisma.marketingCampaign.updateMany({
+        where: { id: req.params.id, userId: req.userId! },
+        data: {
+          ...(name !== undefined && { name }),
+          ...(goal !== undefined && { goal }),
+          ...(status !== undefined && { status }),
+          ...(channels !== undefined && { channels }),
+          ...(smsContent !== undefined && { smsContent }),
+          ...(emailContent !== undefined && { emailContent }),
+          ...(socialContent !== undefined && { socialContent }),
+          ...(scheduledAt !== undefined && {
+            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+          }),
+        },
+      });
+      if (result.count === 0) {
+        res.status(404).json({ error: "Not found." });
+        return;
+      }
+      const updated = await prisma.marketingCampaign.findUnique({
+        where: { id: req.params.id },
+      });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update campaign." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -156,15 +230,24 @@ router.put('/automations/:id', authMiddleware, async (req: AuthRequest, res: Res
  *       404:
  *         description: Not found
  */
-router.delete('/automations/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const result = await prisma.marketingCampaign.deleteMany({ where: { id: req.params.id, userId: req.userId! } });
-    if (result.count === 0) { res.status(404).json({ error: 'Not found.' }); return; }
-    res.json({ message: 'Campaign deleted.' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete campaign.' });
-  }
-});
+router.delete(
+  "/automations/:id",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const result = await prisma.marketingCampaign.deleteMany({
+        where: { id: req.params.id, userId: req.userId! },
+      });
+      if (result.count === 0) {
+        res.status(404).json({ error: "Not found." });
+        return;
+      }
+      res.json({ message: "Campaign deleted." });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete campaign." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -202,16 +285,23 @@ router.delete('/automations/:id', authMiddleware, async (req: AuthRequest, res: 
  *       401:
  *         description: Unauthorized
  */
-router.post('/generate', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { brief, channels } = req.body;
-    if (!brief) { res.status(400).json({ error: 'Campaign brief is required.' }); return; }
-    const content = await generateMarketingContent(brief);
-    res.json(content);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to generate content.' });
-  }
-});
+router.post(
+  "/generate",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { brief, channels } = req.body;
+      if (!brief) {
+        res.status(400).json({ error: "Campaign brief is required." });
+        return;
+      }
+      const content = await generateMarketingContent(brief);
+      res.json(content);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate content." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -238,9 +328,16 @@ router.post('/generate', authMiddleware, async (req: AuthRequest, res: Response)
  *       401:
  *         description: Unauthorized
  */
-router.post('/trigger/:event', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { event } = req.params;
-  res.json({ message: `Trigger received for event: ${event}. Automation triggers are a placeholder for future implementation.`, event });
-});
+router.post(
+  "/trigger/:event",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    const { event } = req.params;
+    res.json({
+      message: `Trigger received for event: ${event}. Automation triggers are a placeholder for future implementation.`,
+      event,
+    });
+  },
+);
 
 export default router;

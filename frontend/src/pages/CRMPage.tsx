@@ -17,6 +17,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
 import { Add, People, Close, History, Edit, Delete } from "@mui/icons-material";
 import api from "../api/client";
+import { useSnackbar } from "../contexts/SnackbarContext";
 import type { Customer, Appointment } from "../types";
 
 const emptyForm = { name: "", email: "", phone: "", notes: "" };
@@ -32,6 +33,9 @@ const CRMPage: React.FC = () => {
   );
   const [history, setHistory] = useState<Appointment[]>([]);
   const [form, setForm] = useState({ ...emptyForm });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const { showConfirm } = useSnackbar();
 
   const fetchCustomers = () => {
     api
@@ -81,9 +85,22 @@ const CRMPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this customer? This cannot be undone.")) return;
+    const confirmed = await showConfirm(
+      "Delete this customer? This cannot be undone.",
+    );
+    if (!confirmed) return;
     await api.delete(`/customers/${id}`);
     if (selectedCustomer?.id === id) setDrawerOpen(false);
+    fetchCustomers();
+  };
+
+  const handleBatchDelete = async () => {
+    const confirmed = await showConfirm(
+      `Delete ${selected.length} customer(s)?`,
+    );
+    if (!confirmed) return;
+    await Promise.all(selected.map((id) => api.delete(`/customers/${id}`)));
+    setSelected([]);
     fetchCustomers();
   };
 
@@ -147,9 +164,19 @@ const CRMPage: React.FC = () => {
     },
   ];
 
+  const filteredCustomers = customers.filter((c) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      (c.email && c.email.toLowerCase().includes(q)) ||
+      (c.phone && c.phone.toLowerCase().includes(q))
+    );
+  });
+
   return (
     <Fade in timeout={500}>
-      <Box>
+      <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <Box
           sx={{
             display: "flex",
@@ -167,20 +194,44 @@ const CRMPage: React.FC = () => {
           </Button>
         </Box>
 
+        <TextField
+          placeholder="Search by name, email or phone..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          size="small"
+          sx={{ mb: 2, maxWidth: 400 }}
+        />
+        {selected.length > 0 && (
+          <Button
+            size="small"
+            color="error"
+            variant="outlined"
+            onClick={handleBatchDelete}
+            sx={{ mb: 2, ml: 2 }}
+          >
+            Delete {selected.length} selected
+          </Button>
+        )}
+
         <Box
           sx={{
             background: "rgba(26,31,58,0.7)",
             borderRadius: 2,
             border: "1px solid rgba(255,255,255,0.08)",
             overflow: "hidden",
+            flex: 1,
+            minHeight: 0,
           }}
         >
           <DataGrid
-            rows={customers}
+            rows={filteredCustomers}
             columns={columns}
             loading={loading}
-            autoHeight
-            pageSizeOptions={[10, 25]}
+            checkboxSelection
+            onRowSelectionModelChange={(model: any) =>
+              setSelected(Array.from(model?.ids ?? []) as string[])
+            }
+            pageSizeOptions={[10]}
             initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
             sx={{
               border: "none",
@@ -201,7 +252,9 @@ const CRMPage: React.FC = () => {
           onClose={() => setDialogOpen(false)}
           maxWidth="sm"
           fullWidth
-          PaperProps={{ sx: { background: "#1a1f3a", borderRadius: 4 } }}
+          slotProps={{
+            paper: { sx: { background: "#1a1f3a", borderRadius: 4 } },
+          }}
         >
           <DialogTitle>
             {editingId ? "Edit Customer" : "Add Customer"}
@@ -256,8 +309,14 @@ const CRMPage: React.FC = () => {
           anchor="right"
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
-          PaperProps={{
-            sx: { width: { xs: "100%", sm: 420 }, background: "#0d1130", p: 0 },
+          slotProps={{
+            paper: {
+              sx: {
+                width: { xs: "100%", sm: 420 },
+                background: "#0d1130",
+                p: 0,
+              },
+            },
           }}
         >
           {selectedCustomer && (

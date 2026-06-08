@@ -18,7 +18,7 @@ import {
   CalendarMonth,
   Warning,
   TrendingUp,
-  People,
+  Inventory2,
   CheckCircle,
 } from "@mui/icons-material";
 import api from "../api/client";
@@ -47,7 +47,7 @@ const DashboardPage: React.FC = () => {
             <Grid size={{ xs: 12, md: 6, lg: 4 }} key={i}>
               <Skeleton
                 variant="rounded"
-                height={200}
+                height={280}
                 sx={{ borderRadius: 4 }}
               />
             </Grid>
@@ -61,14 +61,6 @@ const DashboardPage: React.FC = () => {
     return <Typography color="error">Failed to load dashboard.</Typography>;
 
   const w = data.widgets;
-  const widgetCount = [
-    w.scheduling,
-    w.crm,
-    w.inventory,
-    w.tasks,
-    w.analytics,
-  ].filter(Boolean).length;
-  const gridSize = widgetCount <= 2 ? 6 : 4; // Adaptive layout
 
   return (
     <Fade in timeout={500}>
@@ -81,11 +73,11 @@ const DashboardPage: React.FC = () => {
         </Typography>
 
         <Grid container spacing={3}>
-          {/* Agenda Widget */}
+          {/* Agenda Widget — show next 2 appointments only */}
           {w.scheduling && (
-            <Grid size={{ xs: 12, md: gridSize }}>
+            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
               <Card sx={{ height: "100%" }}>
-                <CardContent>
+                <CardContent sx={{ flex: 1 }}>
                   <Box
                     sx={{
                       display: "flex",
@@ -95,7 +87,7 @@ const DashboardPage: React.FC = () => {
                     }}
                   >
                     <CalendarMonth sx={{ color: "#4FC3F7" }} />
-                    <Typography variant="h6" fontWeight={600}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       Today's Agenda
                     </Typography>
                     <Chip
@@ -108,35 +100,43 @@ const DashboardPage: React.FC = () => {
                       }}
                     />
                   </Box>
-                  {w.scheduling.nextAppointment ? (
-                    <Card
-                      sx={{
-                        background: "rgba(79,195,247,0.08)",
-                        border: "1px solid rgba(79,195,247,0.2)",
-                        mb: 2,
-                        p: 2,
-                      }}
-                    >
-                      <Typography
-                        variant="overline"
-                        color="#4FC3F7"
-                        fontWeight={600}
+                  {w.scheduling.upcoming.length > 0 ? (
+                    w.scheduling.upcoming.slice(0, 2).map((apt, idx) => (
+                      <Card
+                        key={apt.id}
+                        sx={{
+                          background:
+                            idx === 0
+                              ? "rgba(79,195,247,0.08)"
+                              : "rgba(255,255,255,0.03)",
+                          border:
+                            idx === 0
+                              ? "1px solid rgba(79,195,247,0.2)"
+                              : "1px solid rgba(255,255,255,0.05)",
+                          mb: 1.5,
+                          p: 2,
+                        }}
                       >
-                        UP NEXT
-                      </Typography>
-                      <Typography variant="h6" fontWeight={600}>
-                        {w.scheduling.nextAppointment.customerName}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {w.scheduling.nextAppointment.title} •{" "}
-                        {new Date(
-                          w.scheduling.nextAppointment.startTime,
-                        ).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </Typography>
-                    </Card>
+                        {idx === 0 && (
+                          <Typography
+                            variant="overline"
+                            sx={{ color: "#4FC3F7", fontWeight: 600 }}
+                          >
+                            UP NEXT
+                          </Typography>
+                        )}
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          {apt.customerName}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {apt.title} •{" "}
+                          {new Date(apt.startTime).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </Typography>
+                      </Card>
+                    ))
                   ) : (
                     <Typography
                       variant="body2"
@@ -146,32 +146,6 @@ const DashboardPage: React.FC = () => {
                       No more appointments today 🎉
                     </Typography>
                   )}
-                  {w.scheduling.upcoming.slice(0, 3).map((apt) => (
-                    <Box
-                      key={apt.id}
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        py: 1,
-                        borderBottom: "1px solid rgba(255,255,255,0.04)",
-                      }}
-                    >
-                      <Box>
-                        <Typography variant="body2" fontWeight={500}>
-                          {apt.customerName}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {apt.title}
-                        </Typography>
-                      </Box>
-                      <Typography variant="body2" color="text.secondary">
-                        {new Date(apt.startTime).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </Typography>
-                    </Box>
-                  ))}
                 </CardContent>
               </Card>
             </Grid>
@@ -179,16 +153,9 @@ const DashboardPage: React.FC = () => {
 
           {/* Stock Alert Widget */}
           {w.inventory && (
-            <Grid size={{ xs: 12, md: gridSize }}>
-              <Card
-                sx={{
-                  height: "100%",
-                  ...(w.inventory.criticalLowCount > 0
-                    ? { borderColor: "rgba(255,107,107,0.3)" }
-                    : {}),
-                }}
-              >
-                <CardContent>
+            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+              <Card sx={{ height: "100%" }}>
+                <CardContent sx={{ flex: 1 }}>
                   <Box
                     sx={{
                       display: "flex",
@@ -205,7 +172,7 @@ const DashboardPage: React.FC = () => {
                             : "#66BB6A",
                       }}
                     />
-                    <Typography variant="h6" fontWeight={600}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       Stock Alerts
                     </Typography>
                     <Chip
@@ -240,7 +207,7 @@ const DashboardPage: React.FC = () => {
                           borderBottom: "1px solid rgba(255,255,255,0.04)",
                         }}
                       >
-                        <Typography variant="body2" fontWeight={500}>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
                           {item.name}
                         </Typography>
                         <Chip
@@ -272,9 +239,9 @@ const DashboardPage: React.FC = () => {
 
           {/* Task List Widget */}
           {w.tasks && (
-            <Grid size={{ xs: 12, md: gridSize }}>
+            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
               <Card sx={{ height: "100%" }}>
-                <CardContent>
+                <CardContent sx={{ flex: 1 }}>
                   <Box
                     sx={{
                       display: "flex",
@@ -284,7 +251,7 @@ const DashboardPage: React.FC = () => {
                     }}
                   >
                     <CheckCircle sx={{ color: "#66BB6A" }} />
-                    <Typography variant="h6" fontWeight={600}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       Tasks
                     </Typography>
                     <Chip
@@ -349,9 +316,16 @@ const DashboardPage: React.FC = () => {
                         />
                         <ListItemText
                           primary={task.title}
-                          primaryTypographyProps={{
-                            variant: "body2",
-                            noWrap: true,
+                          slotProps={{
+                            primary: {
+                              sx: {
+                                fontSize: "0.875rem",
+                                noWrap: true,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              },
+                            },
                           }}
                         />
                       </ListItem>
@@ -362,11 +336,11 @@ const DashboardPage: React.FC = () => {
             </Grid>
           )}
 
-          {/* CRM Widget */}
-          {w.crm && (
-            <Grid size={{ xs: 12, md: gridSize }}>
+          {/* Inventory Summary Widget (replaces CRM widget) */}
+          {w.inventory && (
+            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
               <Card sx={{ height: "100%" }}>
-                <CardContent>
+                <CardContent sx={{ flex: 1 }}>
                   <Box
                     sx={{
                       display: "flex",
@@ -375,48 +349,51 @@ const DashboardPage: React.FC = () => {
                       mb: 2,
                     }}
                   >
-                    <People sx={{ color: "#BA68C8" }} />
-                    <Typography variant="h6" fontWeight={600}>
-                      Clients
+                    <Inventory2 sx={{ color: "#FFB74D" }} />
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      Inventory Overview
                     </Typography>
-                    <Chip
-                      label={`${w.crm.totalCustomers} total`}
-                      size="small"
-                      sx={{
-                        ml: "auto",
-                        background: "rgba(186,104,200,0.15)",
-                        color: "#BA68C8",
-                      }}
-                    />
                   </Box>
-                  {w.crm.recentCustomers.length > 0 ? (
-                    w.crm.recentCustomers.map((c) => (
-                      <Box
-                        key={c.id}
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          py: 1,
-                          borderBottom: "1px solid rgba(255,255,255,0.04)",
-                        }}
-                      >
-                        <Typography variant="body2" fontWeight={500}>
-                          {c.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {new Date(c.createdAt).toLocaleDateString()}
-                        </Typography>
-                      </Box>
-                    ))
-                  ) : (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ py: 2 }}
+                  <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+                    <Box
+                      sx={{
+                        textAlign: "center",
+                        flex: 1,
+                        p: 2,
+                        borderRadius: 2,
+                        background: "rgba(102,187,106,0.08)",
+                      }}
                     >
-                      No clients yet. Add your first one!
-                    </Typography>
-                  )}
+                      <Typography
+                        variant="h4"
+                        sx={{ color: "#66BB6A", fontWeight: 700 }}
+                      >
+                        {w.inventory.totalItems}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Products
+                      </Typography>
+                    </Box>
+                    <Box
+                      sx={{
+                        textAlign: "center",
+                        flex: 1,
+                        p: 2,
+                        borderRadius: 2,
+                        background: "rgba(255,107,107,0.08)",
+                      }}
+                    >
+                      <Typography
+                        variant="h4"
+                        sx={{ color: "#FF6B6B", fontWeight: 700 }}
+                      >
+                        {w.inventory.criticalLowCount}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Low Stock
+                      </Typography>
+                    </Box>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
@@ -424,19 +401,26 @@ const DashboardPage: React.FC = () => {
 
           {/* Analytics Widget */}
           {w.analytics && (
-            <Grid size={{ xs: 12, md: gridSize }}>
+            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
               <Card sx={{ height: "100%" }}>
-                <CardContent>
+                <CardContent
+                  sx={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                  }}
+                >
                   <Box
                     sx={{
                       display: "flex",
                       alignItems: "center",
                       gap: 1,
-                      mb: 2,
+                      mb: 3,
                     }}
                   >
                     <TrendingUp sx={{ color: "#FFB74D" }} />
-                    <Typography variant="h6" fontWeight={600}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       Business Health
                     </Typography>
                   </Box>
@@ -444,8 +428,7 @@ const DashboardPage: React.FC = () => {
                     <Box sx={{ textAlign: "center", flexGrow: 1 }}>
                       <Typography
                         variant="h3"
-                        fontWeight={700}
-                        sx={{ color: "#4FC3F7" }}
+                        sx={{ fontWeight: 700, color: "#4FC3F7" }}
                       >
                         {w.analytics.weekCompletedAppointments}
                       </Typography>
@@ -456,8 +439,7 @@ const DashboardPage: React.FC = () => {
                     <Box sx={{ textAlign: "center", flexGrow: 1 }}>
                       <Typography
                         variant="h3"
-                        fontWeight={700}
-                        sx={{ color: "#FFB74D" }}
+                        sx={{ fontWeight: 700, color: "#FFB74D" }}
                       >
                         {w.analytics.totalAppointments}
                       </Typography>

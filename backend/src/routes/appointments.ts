@@ -1,6 +1,9 @@
-import { Router, Response } from 'express';
-import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import prisma from '../config/db.js';
+import { Router, Response } from "express";
+import { authMiddleware, AuthRequest } from "../middleware/auth.js";
+import { validate } from "../middleware/validate.js";
+import { createAppointmentSchema } from "../validation/schemas.js";
+import { getPagination, paginatedResponse } from "../utils/pagination.js";
+import prisma from "../config/db.js";
 
 /**
  * @swagger
@@ -50,33 +53,56 @@ const router = Router();
  *       401:
  *         description: Unauthorized
  */
-router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { startDate, endDate, status } = req.query;
-    const where: any = { userId: req.userId! };
+router.get(
+  "/",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { startDate, endDate, status } = req.query;
+      const where: any = { userId: req.userId! };
 
-    if (startDate && endDate) {
-      where.startTime = {
-        gte: new Date(startDate as string),
-        lte: new Date(endDate as string),
-      };
+      if (startDate && endDate) {
+        where.startTime = {
+          gte: new Date(startDate as string),
+          lte: new Date(endDate as string),
+        };
+      }
+      if (status) {
+        where.status = status as string;
+      }
+
+      const pagination = getPagination(req);
+
+      if (pagination) {
+        const [appointments, total] = await Promise.all([
+          prisma.appointment.findMany({
+            where,
+            include: {
+              customer: { select: { id: true, name: true, phone: true } },
+            },
+            orderBy: { startTime: "asc" },
+            skip: pagination.skip,
+            take: pagination.take,
+          }),
+          prisma.appointment.count({ where }),
+        ]);
+        res.json(paginatedResponse(appointments, total, pagination));
+      } else {
+        const appointments = await prisma.appointment.findMany({
+          where,
+          include: {
+            customer: { select: { id: true, name: true, phone: true } },
+          },
+          orderBy: { startTime: "asc" },
+        });
+        res.json(appointments);
+      }
+    } catch (error) {
+      console.error("Get appointments error:", error);
+      res.status(500).json({ error: "Failed to fetch appointments." });
     }
-    if (status) {
-      where.status = status as string;
-    }
-
-    const appointments = await prisma.appointment.findMany({
-      where,
-      include: { customer: { select: { id: true, name: true, phone: true } } },
-      orderBy: { startTime: 'asc' },
-    });
-
-    res.json(appointments);
-  } catch (error) {
-    console.error('Get appointments error:', error);
-    res.status(500).json({ error: 'Failed to fetch appointments.' });
-  }
-});
+  },
+);
 
 /**
  * @swagger
@@ -123,54 +149,60 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
  *       401:
  *         description: Unauthorized
  */
-router.get('/availability', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { date } = req.query;
-    if (!date) {
-      res.status(400).json({ error: 'Date query parameter is required (YYYY-MM-DD).' });
-      return;
-    }
+router.get(
+  "/availability",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { date } = req.query;
+      if (!date) {
+        res
+          .status(400)
+          .json({ error: "Date query parameter is required (YYYY-MM-DD)." });
+        return;
+      }
 
-    const targetDate = new Date(date as string);
-    const nextDate = new Date(targetDate);
-    nextDate.setDate(nextDate.getDate() + 1);
+      const targetDate = new Date(date as string);
+      const nextDate = new Date(targetDate);
+      nextDate.setDate(nextDate.getDate() + 1);
 
-    const existingAppointments = await prisma.appointment.findMany({
-      where: {
-        userId: req.userId!,
-        startTime: { gte: targetDate, lt: nextDate },
-        status: { not: 'cancelled' },
-      },
-      orderBy: { startTime: 'asc' },
-    });
-
-    // Generate hourly slots from 8 AM to 6 PM
-    const slots = [];
-    for (let hour = 8; hour < 18; hour++) {
-      const slotStart = new Date(targetDate);
-      slotStart.setHours(hour, 0, 0, 0);
-      const slotEnd = new Date(targetDate);
-      slotEnd.setHours(hour + 1, 0, 0, 0);
-
-      const isBooked = existingAppointments.some(apt => {
-        const aptStart = new Date(apt.startTime);
-        const aptEnd = new Date(apt.endTime);
-        return aptStart < slotEnd && aptEnd > slotStart;
+      const existingAppointments = await prisma.appointment.findMany({
+        where: {
+          userId: req.userId!,
+          startTime: { gte: targetDate, lt: nextDate },
+          status: { not: "cancelled" },
+        },
+        orderBy: { startTime: "asc" },
       });
 
-      slots.push({
-        startTime: slotStart.toISOString(),
-        endTime: slotEnd.toISOString(),
-        available: !isBooked,
-      });
-    }
+      // Generate hourly slots from 8 AM to 6 PM
+      const slots = [];
+      for (let hour = 8; hour < 18; hour++) {
+        const slotStart = new Date(targetDate);
+        slotStart.setHours(hour, 0, 0, 0);
+        const slotEnd = new Date(targetDate);
+        slotEnd.setHours(hour + 1, 0, 0, 0);
 
-    res.json({ date: date as string, slots });
-  } catch (error) {
-    console.error('Availability error:', error);
-    res.status(500).json({ error: 'Failed to check availability.' });
-  }
-});
+        const isBooked = existingAppointments.some((apt) => {
+          const aptStart = new Date(apt.startTime);
+          const aptEnd = new Date(apt.endTime);
+          return aptStart < slotEnd && aptEnd > slotStart;
+        });
+
+        slots.push({
+          startTime: slotStart.toISOString(),
+          endTime: slotEnd.toISOString(),
+          available: !isBooked,
+        });
+      }
+
+      res.json({ date: date as string, slots });
+    } catch (error) {
+      console.error("Availability error:", error);
+      res.status(500).json({ error: "Failed to check availability." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -198,35 +230,52 @@ router.get('/availability', authMiddleware, async (req: AuthRequest, res: Respon
  *       401:
  *         description: Unauthorized
  */
-router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { title, startTime, endTime, customerId, status, source, notes } = req.body;
-
-    if (!title || !startTime || !endTime) {
-      res.status(400).json({ error: 'Title, startTime, and endTime are required.' });
-      return;
-    }
-
-    const appointment = await prisma.appointment.create({
-      data: {
-        userId: req.userId!,
+router.post(
+  "/",
+  authMiddleware,
+  validate(createAppointmentSchema),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const {
         title,
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
-        customerId: customerId || null,
-        status: status || 'scheduled',
-        source: source || 'manual',
-        notes: notes || null,
-      },
-      include: { customer: { select: { id: true, name: true } } },
-    });
+        startTime,
+        endTime,
+        customerId,
+        status,
+        source,
+        price,
+        notes,
+      } = req.body;
 
-    res.status(201).json(appointment);
-  } catch (error) {
-    console.error('Create appointment error:', error);
-    res.status(500).json({ error: 'Failed to create appointment.' });
-  }
-});
+      if (!title || !startTime || !endTime) {
+        res
+          .status(400)
+          .json({ error: "Title, startTime, and endTime are required." });
+        return;
+      }
+
+      const appointment = await prisma.appointment.create({
+        data: {
+          userId: req.userId!,
+          title,
+          startTime: new Date(startTime),
+          endTime: new Date(endTime),
+          customerId: customerId || null,
+          status: status || "scheduled",
+          source: source || "manual",
+          price: price != null ? Number(price) : null,
+          notes: notes || null,
+        },
+        include: { customer: { select: { id: true, name: true } } },
+      });
+
+      res.status(201).json(appointment);
+    } catch (error) {
+      console.error("Create appointment error:", error);
+      res.status(500).json({ error: "Failed to create appointment." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -260,39 +309,47 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
  *       404:
  *         description: Appointment not found
  */
-router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const { title, startTime, endTime, customerId, status, notes } = req.body;
+router.put(
+  "/:id",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { title, startTime, endTime, customerId, status, price, notes } =
+        req.body;
 
-    const appointment = await prisma.appointment.updateMany({
-      where: { id, userId: req.userId! },
-      data: {
-        ...(title !== undefined && { title }),
-        ...(startTime !== undefined && { startTime: new Date(startTime) }),
-        ...(endTime !== undefined && { endTime: new Date(endTime) }),
-        ...(customerId !== undefined && { customerId }),
-        ...(status !== undefined && { status }),
-        ...(notes !== undefined && { notes }),
-      },
-    });
+      const appointment = await prisma.appointment.updateMany({
+        where: { id, userId: req.userId! },
+        data: {
+          ...(title !== undefined && { title }),
+          ...(startTime !== undefined && { startTime: new Date(startTime) }),
+          ...(endTime !== undefined && { endTime: new Date(endTime) }),
+          ...(customerId !== undefined && { customerId }),
+          ...(status !== undefined && { status }),
+          ...(price !== undefined && {
+            price: price != null ? Number(price) : null,
+          }),
+          ...(notes !== undefined && { notes }),
+        },
+      });
 
-    if (appointment.count === 0) {
-      res.status(404).json({ error: 'Appointment not found.' });
-      return;
+      if (appointment.count === 0) {
+        res.status(404).json({ error: "Appointment not found." });
+        return;
+      }
+
+      const updated = await prisma.appointment.findUnique({
+        where: { id },
+        include: { customer: { select: { id: true, name: true } } },
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Update appointment error:", error);
+      res.status(500).json({ error: "Failed to update appointment." });
     }
-
-    const updated = await prisma.appointment.findUnique({
-      where: { id },
-      include: { customer: { select: { id: true, name: true } } },
-    });
-
-    res.json(updated);
-  } catch (error) {
-    console.error('Update appointment error:', error);
-    res.status(500).json({ error: 'Failed to update appointment.' });
-  }
-});
+  },
+);
 
 /**
  * @swagger
@@ -320,24 +377,28 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
  *       404:
  *         description: Appointment not found
  */
-router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
+router.delete(
+  "/:id",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
 
-    const result = await prisma.appointment.deleteMany({
-      where: { id, userId: req.userId! },
-    });
+      const result = await prisma.appointment.deleteMany({
+        where: { id, userId: req.userId! },
+      });
 
-    if (result.count === 0) {
-      res.status(404).json({ error: 'Appointment not found.' });
-      return;
+      if (result.count === 0) {
+        res.status(404).json({ error: "Appointment not found." });
+        return;
+      }
+
+      res.json({ message: "Appointment cancelled successfully." });
+    } catch (error) {
+      console.error("Delete appointment error:", error);
+      res.status(500).json({ error: "Failed to delete appointment." });
     }
-
-    res.json({ message: 'Appointment cancelled successfully.' });
-  } catch (error) {
-    console.error('Delete appointment error:', error);
-    res.status(500).json({ error: 'Failed to delete appointment.' });
-  }
-});
+  },
+);
 
 export default router;
