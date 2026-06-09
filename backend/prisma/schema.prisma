@@ -22,6 +22,7 @@ model User {
   inventoryItems   InventoryItem[]
   tasks            Task[]
   campaigns        MarketingCampaign[]
+  googleCalendarTokens GoogleCalendarToken?
 }
 
 model ModuleConfig {
@@ -62,9 +63,25 @@ model Appointment {
   status     String    @default("scheduled")
   source     String    @default("manual")
   price      Float?
+  googleEventId String?
   notes      String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+}
+
+model GoogleCalendarToken {
+  id           String    @id @default(uuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  email        String
+  syncToken    String?
+  calendarId   String?   // ID of the business-named secondary calendar
+  lastSyncAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model InventoryItem {

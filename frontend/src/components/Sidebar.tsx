@@ -27,6 +27,7 @@ import {
   AutoAwesome,
   LightMode,
   DarkMode,
+  Settings,
 } from "@mui/icons-material";
 import { useAuth } from "../contexts/AuthContext";
 import { useThemeMode } from "../contexts/ThemeContext";
@@ -159,7 +160,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             user?.email?.[0]?.toUpperCase() ||
             "M"}
         </Avatar>
-        <Box sx={{ overflow: "hidden" }}>
+        <Box sx={{ overflow: "hidden", flex: 1 }}>
           <Typography variant="body2" fontWeight={600} noWrap>
             {user?.businessName || "My Business"}
           </Typography>
@@ -167,6 +168,21 @@ const Sidebar: React.FC<SidebarProps> = ({
             {user?.email}
           </Typography>
         </Box>
+        <Tooltip title="Settings" placement="right">
+          <IconButton
+            size="small"
+            onClick={() => handleNav("/settings")}
+            sx={{
+              color:
+                location.pathname === "/settings"
+                  ? "#4FC3F7"
+                  : "text.secondary",
+              "&:hover": { background: "rgba(79, 195, 247, 0.08)" },
+            }}
+          >
+            <Settings fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       <Divider sx={{ borderColor: "rgba(255,255,255,0.06)", mb: 1 }} />

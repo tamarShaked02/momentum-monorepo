@@ -4,6 +4,7 @@ import { validate } from "../middleware/validate.js";
 import { createAppointmentSchema } from "../validation/schemas.js";
 import { getPagination, paginatedResponse } from "../utils/pagination.js";
 import prisma from "../config/db.js";
+import { pushToGoogle } from "../services/syncEngine.js";
 
 /**
  * @swagger
@@ -270,6 +271,20 @@ router.post(
       });
 
       res.status(201).json(appointment);
+
+      // Non-blocking: push to Google Calendar if user has a token
+      prisma.googleCalendarToken
+        .findUnique({ where: { userId: req.userId! } })
+        .then((token) => {
+          if (token) {
+            pushToGoogle(req.userId!, appointment, "create").catch((err) => {
+              console.error("Google Calendar sync (create) failed:", err);
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("Google Calendar token check failed:", err);
+        });
     } catch (error) {
       console.error("Create appointment error:", error);
       res.status(500).json({ error: "Failed to create appointment." });
@@ -344,6 +359,22 @@ router.put(
       });
 
       res.json(updated);
+
+      // Non-blocking: push to Google Calendar if user has a token
+      if (updated) {
+        prisma.googleCalendarToken
+          .findUnique({ where: { userId: req.userId! } })
+          .then((token) => {
+            if (token) {
+              pushToGoogle(req.userId!, updated, "update").catch((err) => {
+                console.error("Google Calendar sync (update) failed:", err);
+              });
+            }
+          })
+          .catch((err) => {
+            console.error("Google Calendar token check failed:", err);
+          });
+      }
     } catch (error) {
       console.error("Update appointment error:", error);
       res.status(500).json({ error: "Failed to update appointment." });
@@ -384,16 +415,35 @@ router.delete(
     try {
       const { id } = req.params;
 
-      const result = await prisma.appointment.deleteMany({
+      // Fetch the appointment before deleting to get googleEventId for sync
+      const appointment = await prisma.appointment.findFirst({
         where: { id, userId: req.userId! },
       });
 
-      if (result.count === 0) {
+      if (!appointment) {
         res.status(404).json({ error: "Appointment not found." });
         return;
       }
 
+      await prisma.appointment.delete({
+        where: { id },
+      });
+
       res.json({ message: "Appointment cancelled successfully." });
+
+      // Non-blocking: push delete to Google Calendar if user has a token
+      prisma.googleCalendarToken
+        .findUnique({ where: { userId: req.userId! } })
+        .then((token) => {
+          if (token) {
+            pushToGoogle(req.userId!, appointment, "delete").catch((err) => {
+              console.error("Google Calendar sync (delete) failed:", err);
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("Google Calendar token check failed:", err);
+        });
     } catch (error) {
       console.error("Delete appointment error:", error);
       res.status(500).json({ error: "Failed to delete appointment." });

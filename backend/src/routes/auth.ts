@@ -234,4 +234,87 @@ router.get(
   },
 );
 
+/**
+ * PUT /api/auth/profile
+ * Update the authenticated user's profile (business name).
+ */
+router.put(
+  "/profile",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { businessName } = req.body;
+
+      const user = await prisma.user.update({
+        where: { id: req.userId! },
+        data: {
+          ...(businessName !== undefined && { businessName }),
+        },
+        select: {
+          id: true,
+          email: true,
+          businessName: true,
+          businessType: true,
+        },
+      });
+
+      res.json(user);
+    } catch (error) {
+      console.error("Update profile error:", error);
+      res.status(500).json({ error: "Failed to update profile." });
+    }
+  },
+);
+
+/**
+ * PUT /api/auth/password
+ * Change the authenticated user's password.
+ */
+router.put(
+  "/password",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        res
+          .status(400)
+          .json({ error: "Current and new password are required." });
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        res
+          .status(400)
+          .json({ error: "New password must be at least 6 characters." });
+        return;
+      }
+
+      const user = await prisma.user.findUnique({ where: { id: req.userId! } });
+      if (!user) {
+        res.status(404).json({ error: "User not found." });
+        return;
+      }
+
+      const isValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isValid) {
+        res.status(401).json({ error: "Current password is incorrect." });
+        return;
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      await prisma.user.update({
+        where: { id: req.userId! },
+        data: { password: hashedPassword },
+      });
+
+      res.json({ message: "Password changed successfully." });
+    } catch (error) {
+      console.error("Change password error:", error);
+      res.status(500).json({ error: "Failed to change password." });
+    }
+  },
+);
+
 export default router;

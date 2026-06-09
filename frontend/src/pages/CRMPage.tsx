@@ -15,7 +15,15 @@ import {
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
-import { Add, People, Close, History, Edit, Delete } from "@mui/icons-material";
+import {
+  Add,
+  People,
+  Close,
+  History,
+  Edit,
+  Delete,
+  Notes,
+} from "@mui/icons-material";
 import api from "../api/client";
 import { useSnackbar } from "../contexts/SnackbarContext";
 import type { Customer, Appointment } from "../types";
@@ -547,6 +555,7 @@ const CRMPage: React.FC = () => {
                       return (
                         <Box
                           key={apt.id}
+                          data-testid="appointment-history-entry"
                           sx={{
                             p: 2,
                             background: "rgba(255,255,255,0.03)",
@@ -562,9 +571,23 @@ const CRMPage: React.FC = () => {
                               mb: 0.5,
                             }}
                           >
-                            <Typography variant="body2" fontWeight={600}>
-                              {apt.title}
-                            </Typography>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 0.5,
+                              }}
+                            >
+                              <Typography variant="body2" fontWeight={600}>
+                                {apt.title}
+                              </Typography>
+                              {apt.notes && (
+                                <Notes
+                                  data-testid="appointment-notes-icon"
+                                  sx={{ fontSize: 16, color: "#9AA0B4" }}
+                                />
+                              )}
+                            </Box>
                             <Chip
                               label={apt.status}
                               size="small"
@@ -581,21 +604,37 @@ const CRMPage: React.FC = () => {
                             {new Date(apt.startTime).toLocaleString()}
                           </Typography>
                           {apt.notes && (
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
+                            <Box
+                              data-testid="appointment-notes-section"
                               sx={{
-                                display: "block",
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: 1,
                                 mt: 1,
-                                p: 1,
+                                p: 1.5,
                                 background: "rgba(255,255,255,0.03)",
                                 borderRadius: 1.5,
-                                fontStyle: "italic",
-                                lineHeight: 1.6,
                               }}
                             >
-                              📝 {apt.notes}
-                            </Typography>
+                              <Notes
+                                sx={{
+                                  fontSize: 14,
+                                  color: "#4FC3F7",
+                                  mt: 0.25,
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{
+                                  lineHeight: 1.6,
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                {apt.notes}
+                              </Typography>
+                            </Box>
                           )}
                         </Box>
                       );
