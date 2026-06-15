@@ -146,12 +146,13 @@ const InventoryPage: React.FC = () => {
             size="small"
             variant="outlined"
             sx={{ minWidth: 32, px: 0, borderColor: "rgba(255,255,255,0.15)" }}
-            onClick={() =>
+            onClick={(e) => {
+              e.stopPropagation();
               handleQuantityChange(
                 params.row.id,
                 Math.max(0, params.row.quantity - 1),
-              )
-            }
+              );
+            }}
           >
             −
           </Button>
@@ -165,9 +166,10 @@ const InventoryPage: React.FC = () => {
             size="small"
             variant="outlined"
             sx={{ minWidth: 32, px: 0, borderColor: "rgba(255,255,255,0.15)" }}
-            onClick={() =>
-              handleQuantityChange(params.row.id, params.row.quantity + 1)
-            }
+            onClick={(e) => {
+              e.stopPropagation();
+              handleQuantityChange(params.row.id, params.row.quantity + 1);
+            }}
           >
             +
           </Button>
@@ -183,14 +185,20 @@ const InventoryPage: React.FC = () => {
         <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
           <IconButton
             size="small"
-            onClick={() => openEdit(params.row)}
+            onClick={(e) => {
+              e.stopPropagation();
+              openEdit(params.row);
+            }}
             sx={{ color: "#4FC3F7" }}
           >
             <Edit fontSize="small" />
           </IconButton>
           <IconButton
             size="small"
-            onClick={() => handleDelete(params.row.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(params.row.id);
+            }}
             sx={{ color: "#FF6B6B" }}
           >
             <Delete fontSize="small" />
@@ -246,6 +254,7 @@ const InventoryPage: React.FC = () => {
             columns={columns}
             loading={loading}
             checkboxSelection
+            disableRowSelectionOnClick
             onRowSelectionModelChange={(model: any) =>
               setSelected(Array.from(model?.ids ?? []) as string[])
             }

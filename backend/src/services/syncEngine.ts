@@ -30,7 +30,7 @@ interface GoogleEvent {
  */
 export async function withExponentialBackoff<T>(
   operation: () => Promise<T>,
-  maxRetries: number = 5,
+  maxRetries: number = 10,
   baseDelayMs: number = 1000,
 ): Promise<T> {
   let lastError: unknown;
