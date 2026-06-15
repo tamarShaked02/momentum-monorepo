@@ -35,7 +35,7 @@ import type { Task } from "../types";
 const statusColumns = [
   { key: "pending", label: "To Do", color: "#FFB74D" },
   { key: "in_progress", label: "In Progress", color: "#4FC3F7" },
-  { key: "completed", label: "Completed", color: "#66BB6A" },
+  { key: "done", label: "Completed", color: "#66BB6A" },
 ];
 
 const priorityColors: Record<string, string> = {

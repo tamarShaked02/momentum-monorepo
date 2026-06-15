@@ -2,16 +2,113 @@ import { Telegraf } from "telegraf";
 import { env } from "../config/env.js";
 import prisma from "../config/db.js";
 import { logTelegramActivity } from "../services/telegramActivityLogger.js";
+import { interpretCommand } from "../ai/aiInterpreter.js";
+import { commandEngine } from "../ai/commandEngine.js";
 
 const bot = env.BOT_TOKEN ? new Telegraf(env.BOT_TOKEN) : null;
+
+// Map to store pending confirmation tokens per chatId
+const pendingConfirmations = new Map<string, string>();
 
 if (bot) {
   bot.start((ctx) => {
     ctx.reply(
-      'Welcome to Momentum! 🚀\nSend me a message to book an appointment.\nFormat: "Book [service] on [date] at [time]"\nExample: "Book manicure on Friday at 2pm"',
+      "Welcome to Momentum! 🚀\nI am your unified AI Business Assistant. You can send me natural language commands to schedule appointments, manage tasks, check inventory, add customers, view analytics, and more!\n\nExamples:\n• 'Book haircut for tomorrow at 3pm'\n• 'Add a new task: Send marketing email'\n• 'Search for customer Jane'",
     );
   });
 
+  // Handle inline keyboard button clicks
+  bot.on("callback_query", async (ctx) => {
+    const data = (ctx.callbackQuery as any).data;
+    const chatId = ctx.chat?.id.toString();
+    if (!chatId) return;
+
+    const token = pendingConfirmations.get(chatId);
+    if (!token) {
+      await ctx.reply("No pending action found or confirmation expired.");
+      await ctx.answerCbQuery();
+      return;
+    }
+
+    pendingConfirmations.delete(chatId);
+
+    // Get the user by telegramChatId for bot operations
+    const user = await prisma.user.findFirst({ where: { telegramChatId: chatId } });
+    if (!user) {
+      await ctx.reply("Error: Your account is not linked. Please send a message to link your account.");
+      await ctx.answerCbQuery();
+      return;
+    }
+    const businessUserId = user.id;
+
+    try {
+      const confirmed = data === "confirm_yes";
+      const result = await commandEngine.confirm(token, confirmed, businessUserId);
+
+      let replyText = "";
+      if (result.success) {
+        if (confirmed) {
+          replyText = `✅ Action completed successfully!\n${result.message}`;
+          if (result.data) {
+            replyText += `\n\nDetails:\n${JSON.stringify(result.data, null, 2)}`;
+          }
+        } else {
+          replyText = `❌ Action cancelled.\n${result.message}`;
+        }
+      } else {
+        replyText = `⚠️ Error performing action: ${result.message}`;
+      }
+
+      await ctx.reply(replyText);
+
+      // Log outbound activity
+      await logTelegramActivity({
+        userId: businessUserId,
+        direction: "outbound",
+        text: replyText,
+      });
+    } catch (err) {
+      console.error("Callback query handling error:", err);
+      await ctx.reply("An error occurred during confirmation.");
+    }
+
+    await ctx.answerCbQuery();
+  });
+
+  bot.on("contact", async (ctx) => {
+    const contact = ctx.message.contact;
+    const chatId = ctx.chat.id.toString();
+
+    if (!contact.phone_number) {
+      await ctx.reply("Invalid contact shared.");
+      return;
+    }
+
+    const phoneNumber = contact.phone_number.replace(/\D/g, "");
+    
+    // Find matching user by phone
+    const usersWithPhone = await prisma.user.findMany({ where: { phone: { not: null } } });
+    const matchedUser = usersWithPhone.find(u => {
+      const dbPhone = u.phone!.replace(/\D/g, "");
+      return dbPhone === phoneNumber || phoneNumber.endsWith(dbPhone) || dbPhone.endsWith(phoneNumber);
+    });
+
+    if (matchedUser) {
+      await prisma.user.update({
+        where: { id: matchedUser.id },
+        data: { telegramChatId: chatId }
+      });
+      await ctx.reply("✅ Account successfully linked! You can now send me commands like 'Add a task' or 'Check my schedule'.", {
+        reply_markup: { remove_keyboard: true }
+      });
+    } else {
+      await ctx.reply(`❌ No business account found with the phone number ${contact.phone_number}.\n\nPlease update your phone number in the Momentum web settings and share your contact again.`, {
+        reply_markup: { remove_keyboard: true }
+      });
+    }
+  });
+
+  // Handle all text messages
   bot.on("text", async (ctx) => {
     const text = ctx.message.text;
     const chatId = ctx.chat.id.toString();
@@ -20,113 +117,98 @@ if (bot) {
       (ctx.from.last_name ? " " + ctx.from.last_name : "");
 
     try {
-      // Find or create customer by telegram chat ID
-      // We need to find a user (business owner) who has this bot configured
-      // For MVP, we use the first user or a default user
-      const users = await prisma.user.findMany({ take: 1 });
-      if (users.length === 0) {
-        await ctx.reply("No business is set up yet. Please try again later.");
+      const user = await prisma.user.findFirst({ where: { telegramChatId: chatId } });
+      if (!user) {
+        await ctx.reply("Your Telegram account is not linked to a Momentum business account. Please click the button below to share your phone number so we can link your account.", {
+          reply_markup: {
+            keyboard: [
+              [{ text: "📱 Share Contact to Link Account", request_contact: true }]
+            ],
+            resize_keyboard: true,
+            one_time_keyboard: true,
+          }
+        });
         return;
       }
-      const businessUserId = users[0].id;
-
-      let customer = await prisma.customer.findFirst({
-        where: { telegramChatId: chatId, userId: businessUserId },
-      });
-      if (!customer) {
-        customer = await prisma.customer.create({
-          data: {
-            userId: businessUserId,
-            name: userName,
-            telegramChatId: chatId,
-          },
-        });
-      }
+      const businessUserId = user.id;
 
       // Log inbound Telegram message activity
       await logTelegramActivity({
         userId: businessUserId,
-        contactId: customer.id,
         direction: "inbound",
         text,
       });
 
-      // Simple booking parser
-      const bookingRegex =
-        /book\s+(.+?)\s+(?:on\s+)?(.+?)\s+(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i;
-      const match = text.match(bookingRegex);
+      // Process command via AI Interpreter
+      const interpretResult = await interpretCommand(text, businessUserId);
 
-      if (match) {
-        const [, service, dateStr, timeStr] = match;
-        const now = new Date();
-        // Simple date parsing
-        let appointmentDate = new Date();
-        const lower = dateStr.toLowerCase().trim();
-        if (lower === "tomorrow") {
-          appointmentDate.setDate(appointmentDate.getDate() + 1);
-        } else if (lower === "today") {
-          // keep today
-        } else {
-          const days = [
-            "sunday",
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-          ];
-          const dayIdx = days.indexOf(lower);
-          if (dayIdx >= 0) {
-            const currentDay = appointmentDate.getDay();
-            const diff = (dayIdx - currentDay + 7) % 7 || 7;
-            appointmentDate.setDate(appointmentDate.getDate() + diff);
-          }
-        }
+      if (interpretResult.type === "function_call" && interpretResult.functionCall) {
+        const result = await commandEngine.execute(interpretResult.functionCall, businessUserId);
 
-        // Parse time
-        let hours = parseInt(timeStr);
-        if (timeStr.toLowerCase().includes("pm") && hours < 12) hours += 12;
-        if (timeStr.toLowerCase().includes("am") && hours === 12) hours = 0;
-        appointmentDate.setHours(hours, 0, 0, 0);
+        if (result.type === "confirmation_required") {
+          pendingConfirmations.set(chatId, result.confirmationToken || "");
+          const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          const replyText = `⚠️ <b>Confirmation Required</b>\n${escapeHtml(result.confirmationDescription || "Are you sure you want to proceed?")}`;
+          
+          await ctx.reply(replyText, {
+            parse_mode: "HTML",
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: "👍 Yes, proceed", callback_data: "confirm_yes" },
+                  { text: "👎 No, cancel", callback_data: "confirm_no" },
+                ],
+              ],
+            },
+          });
 
-        const endTime = new Date(appointmentDate);
-        endTime.setHours(endTime.getHours() + 1);
-
-        const appointment = await prisma.appointment.create({
-          data: {
+          await logTelegramActivity({
             userId: businessUserId,
-            customerId: customer.id,
-            title: service.trim(),
-            startTime: appointmentDate,
-            endTime: endTime,
-            status: "scheduled",
-            source: "telegram",
-            notes: `Booked via Telegram by ${userName}`,
-          },
-        });
+            direction: "outbound",
+            text: replyText,
+          });
+        } else if (result.success) {
+          const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          let replyText = `✅ <b>Command Executed</b>\n${escapeHtml(result.message)}`;
+          if (result.data) {
+            replyText += `\n\n<b>Result Details</b>:\n<pre><code class="language-json">${escapeHtml(JSON.stringify(result.data, null, 2))}</code></pre>`;
+          }
 
-        const confirmationMsg = `✅ Appointment booked!\n📋 Service: ${service.trim()}\n📅 Date: ${appointmentDate.toLocaleDateString()}\n🕐 Time: ${appointmentDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}\n\nSee you then! 🎉`;
-        await ctx.reply(confirmationMsg);
+          await ctx.reply(replyText, { parse_mode: "HTML" });
 
-        // Log outbound reply activity
+          await logTelegramActivity({
+            userId: businessUserId,
+            direction: "outbound",
+            text: replyText,
+          });
+        } else {
+          const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          const replyText = `❌ <b>Error</b>: ${escapeHtml(result.message)}`;
+          await ctx.reply(replyText, { parse_mode: "HTML" });
+
+          await logTelegramActivity({
+            userId: businessUserId,
+            direction: "outbound",
+            text: replyText,
+          });
+        }
+      } else if (interpretResult.type === "clarification" && interpretResult.clarification) {
+        const replyText = interpretResult.clarification.message;
+        await ctx.reply(replyText);
+
         await logTelegramActivity({
           userId: businessUserId,
-          contactId: customer.id,
           direction: "outbound",
-          text: confirmationMsg,
+          text: replyText,
         });
       } else {
-        const helpMsg =
-          'To book an appointment, send:\n"Book [service] on [day] at [time]"\n\nExample: "Book manicure on Friday at 2pm"';
-        await ctx.reply(helpMsg);
+        const replyText = interpretResult.unknownMessage || "I'm sorry, I didn't catch that. Try asking to book an appointment or check list of tasks.";
+        await ctx.reply(replyText);
 
-        // Log outbound reply activity
         await logTelegramActivity({
           userId: businessUserId,
-          contactId: customer.id,
           direction: "outbound",
-          text: helpMsg,
+          text: replyText,
         });
       }
     } catch (error) {

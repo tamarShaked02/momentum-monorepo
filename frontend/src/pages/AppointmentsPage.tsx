@@ -63,16 +63,19 @@ const AppointmentsPage: React.FC = () => {
   // Fetch customers on mount
   useEffect(() => {
     api
-      .get("/customers")
-      .then((res) =>
+      .get("/customers", { params: { pageSize: 1000 } })
+      .then((res) => {
+        const customerList = res.data.data || res.data;
         setCustomers(
-          res.data.map((c: { id: string; name: string }) => ({
+          customerList.map((c: { id: string; name: string }) => ({
             id: c.id,
             name: c.name,
-          })),
-        ),
-      )
-      .catch(() => {});
+          }))
+        );
+      })
+      .catch((e) => {
+        console.error("Failed to load customers:", e);
+      });
   }, []);
 
   // Fetch Google Calendar status
