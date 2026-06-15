@@ -160,4 +160,5 @@ export interface OnboardingResponse {
   recommended_modules?: Array<{ id: string; reason: string }>;
   summary?: string;
   businessType?: string;
+  mode?: "add" | "remove" | "replace";
 }

@@ -62,6 +62,96 @@ const getMockOnboardingResponse = (
   userMessage: string,
   messageCount: number,
 ): OnboardingResponse => {
+  const lower = userMessage.toLowerCase();
+
+  // For returning users requesting specific module additions/removals
+  const addKeywords = ["add", "enable", "want", "need", "activate"];
+  const removeKeywords = [
+    "remove",
+    "disable",
+    "deactivate",
+    "turn off",
+    "don't need",
+    "dont need",
+    "don't want",
+    "dont want",
+    "no longer",
+    "not want",
+  ];
+  const isAddRequest = addKeywords.some((k) => lower.includes(k));
+  const isRemoveRequest = removeKeywords.some((k) => lower.includes(k));
+
+  if (isAddRequest || isRemoveRequest) {
+    const modules: Array<{ id: string; reason: string }> = [];
+    if (
+      lower.includes("schedul") ||
+      lower.includes("appointment") ||
+      lower.includes("book") ||
+      lower.includes("calendar")
+    ) {
+      modules.push({
+        id: "scheduling",
+        reason: "Appointment scheduling and calendar management.",
+      });
+    }
+    if (
+      lower.includes("crm") ||
+      lower.includes("customer") ||
+      lower.includes("contact")
+    ) {
+      modules.push({ id: "crm", reason: "Customer relationship management." });
+    }
+    if (
+      lower.includes("inventor") ||
+      lower.includes("product") ||
+      lower.includes("stock")
+    ) {
+      modules.push({
+        id: "inventory",
+        reason: "Track products and stock levels.",
+      });
+    }
+    if (lower.includes("task")) {
+      modules.push({
+        id: "tasks",
+        reason: "Task management and organization.",
+      });
+    }
+    if (
+      lower.includes("market") ||
+      lower.includes("campaign") ||
+      lower.includes("promot")
+    ) {
+      modules.push({
+        id: "marketing",
+        reason: "Marketing campaigns and promotions.",
+      });
+    }
+    if (
+      lower.includes("analytic") ||
+      lower.includes("report") ||
+      lower.includes("insight")
+    ) {
+      modules.push({
+        id: "analytics",
+        reason: "Business analytics and reporting.",
+      });
+    }
+
+    if (modules.length > 0) {
+      const mode = isRemoveRequest ? "remove" : "add";
+      return {
+        type: "recommendation",
+        recommended_modules: modules,
+        summary: isRemoveRequest
+          ? `Got it! I'll remove ${modules.map((m) => m.id).join(", ")} from your setup.`
+          : `Got it! I'll add ${modules.map((m) => m.id).join(", ")} to your setup.`,
+        businessType: "general",
+        mode,
+      };
+    }
+  }
+
   if (messageCount <= 1) {
     return {
       type: "question",
@@ -78,7 +168,6 @@ const getMockOnboardingResponse = (
     { id: "tasks", reason: "Helps you organize daily operational tasks." },
   ];
 
-  const lower = userMessage.toLowerCase();
   if (
     lower.includes("appointment") ||
     lower.includes("book") ||
