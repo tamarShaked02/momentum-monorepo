@@ -15,6 +15,7 @@ import InventoryPage from "./pages/InventoryPage";
 import TasksPage from "./pages/TasksPage";
 import MarketingPage from "./pages/MarketingPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import SettingsPage from "./pages/SettingsPage";
 
 const App: React.FC = () => {
   return (
@@ -43,6 +44,7 @@ const App: React.FC = () => {
                 <Route path="/tasks" element={<TasksPage />} />
                 <Route path="/marketing" element={<MarketingPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
               </Route>
 
               {/* Default */}

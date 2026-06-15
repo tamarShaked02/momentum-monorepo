@@ -1,438 +1,630 @@
-import React, { useEffect, useState } from "react";
-import {
-  Box,
-  Typography,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Fade,
-  Chip,
-  MenuItem,
-  Autocomplete,
-  IconButton,
-} from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
-import type { GridColDef } from "@mui/x-data-grid";
-import { Add, CalendarMonth, Edit, Delete } from "@mui/icons-material";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { Box, Typography, Fade } from "@mui/material";
+import { CalendarMonth } from "@mui/icons-material";
+import FullCalendar from "@fullcalendar/react";
+import "../components/calendar/calendarStyles.css";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import type {
+  EventContentArg,
+  DatesSetArg,
+  DateSelectArg,
+  EventClickArg,
+  EventDropArg,
+} from "@fullcalendar/core";
+import type { EventResizeDoneArg } from "@fullcalendar/interaction";
 import api from "../api/client";
 import { useSnackbar } from "../contexts/SnackbarContext";
-import type { Appointment, Customer } from "../types";
-
-const emptyForm = {
-  title: "",
-  startTime: "",
-  endTime: "",
-  notes: "",
-  status: "scheduled",
-  source: "manual",
-  customerId: "",
-  price: "",
-};
+import { useThemeMode } from "../contexts/ThemeContext";
+import type { Appointment, GoogleCalendarStatus } from "../types";
+import EventCard from "../components/calendar/EventCard";
+import AppointmentDialog from "../components/calendar/AppointmentDialog";
+import type { AppointmentFormData } from "../components/calendar/AppointmentDialog";
+import ExternalEventPopover from "../components/calendar/ExternalEventPopover";
+import ReminderBanner from "../components/calendar/ReminderBanner";
+import SyncStatusIndicator from "../components/calendar/SyncStatusIndicator";
 
 const AppointmentsPage: React.FC = () => {
+  const { mode } = useThemeMode();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [customers, setCustomers] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [googleStatus, setGoogleStatus] = useState<GoogleCalendarStatus | null>(
+    null,
+  );
+  const { showSuccess, showError } = useSnackbar();
+
+  // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ ...emptyForm });
-  const [selected, setSelected] = useState<string[]>([]);
-  const [showPast, setShowPast] = useState(false);
-  const { showConfirm } = useSnackbar();
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [dialogInitialData, setDialogInitialData] = useState<
+    Partial<AppointmentFormData> | undefined
+  >(undefined);
+  const [editingAppointmentId, setEditingAppointmentId] = useState<
+    string | null
+  >(null);
 
-  const fetchAppointments = () => {
-    api
-      .get("/appointments")
-      .then((res) => {
-        setAppointments(res.data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  };
+  // External event popover state
+  const [popoverAppointment, setPopoverAppointment] =
+    useState<Appointment | null>(null);
+  const [popoverAnchorEl, setPopoverAnchorEl] = useState<HTMLElement | null>(
+    null,
+  );
 
+  // Track current visible range for refetching
+  const currentRangeRef = useRef<{ start: string; end: string } | null>(null);
+  const calendarRef = useRef<FullCalendar | null>(null);
+
+  // Fetch customers on mount
   useEffect(() => {
-    fetchAppointments();
     api
       .get("/customers")
-      .then((res) => setCustomers(res.data))
+      .then((res) =>
+        setCustomers(
+          res.data.map((c: { id: string; name: string }) => ({
+            id: c.id,
+            name: c.name,
+          })),
+        ),
+      )
       .catch(() => {});
   }, []);
 
-  const openCreate = () => {
-    setEditingId(null);
-    setForm({ ...emptyForm });
-    setDialogOpen(true);
-  };
+  // Fetch Google Calendar status
+  const fetchGoogleStatus = useCallback(() => {
+    api
+      .get("/google-calendar/status")
+      .then((res) => setGoogleStatus(res.data))
+      .catch(() => setGoogleStatus(null));
+  }, []);
 
-  const openEdit = (row: Appointment) => {
-    setEditingId(row.id);
-    setForm({
-      title: row.title,
-      startTime: row.startTime.slice(0, 16),
-      endTime: row.endTime.slice(0, 16),
-      notes: row.notes ?? "",
-      status: row.status,
-      source: row.source,
-      customerId: row.customerId ?? "",
-      price: row.price != null ? String(row.price) : "",
-    });
-    setDialogOpen(true);
-  };
+  useEffect(() => {
+    fetchGoogleStatus();
+  }, [fetchGoogleStatus]);
 
-  const handleSave = async () => {
-    if (!form.title || !form.startTime || !form.endTime) return;
-    const payload = { ...form, price: form.price ? Number(form.price) : null };
-    if (editingId) {
-      await api.put(`/appointments/${editingId}`, payload);
-    } else {
-      await api.post("/appointments", payload);
+  // Handle OAuth redirect back from Google
+  useEffect(() => {
+    const googleConnected = searchParams.get("google_connected");
+    const googleError = searchParams.get("google_error");
+
+    if (googleConnected === "true") {
+      showSuccess("Google Calendar connected successfully");
+      fetchGoogleStatus();
+      // Clean up URL params
+      setSearchParams({}, { replace: true });
+    } else if (googleError) {
+      const errorMessages: Record<string, string> = {
+        denied: "Google Calendar access was denied",
+        no_code: "OAuth authorization code missing",
+        no_state: "OAuth state missing — please try again",
+        invalid_state: "OAuth session expired — please try again",
+        token_failed: "Failed to get tokens from Google",
+        server_error: "Server error during connection",
+      };
+      showError(
+        errorMessages[googleError] || "Failed to connect Google Calendar",
+      );
+      setSearchParams({}, { replace: true });
     }
-    setDialogOpen(false);
-    setForm({ ...emptyForm });
-    fetchAppointments();
-  };
+  }, [
+    searchParams,
+    setSearchParams,
+    showSuccess,
+    showError,
+    fetchGoogleStatus,
+  ]);
 
-  const handleDelete = async (id: string) => {
-    const confirmed = await showConfirm("Delete this appointment?");
-    if (!confirmed) return;
-    await api.delete(`/appointments/${id}`);
-    fetchAppointments();
-  };
+  // Fetch appointments for visible range
+  const fetchAppointments = useCallback(
+    (startDate: string, endDate: string) => {
+      api
+        .get("/appointments", { params: { startDate, endDate } })
+        .then((res) => setAppointments(res.data))
+        .catch(() => showError("Failed to load appointments"));
+    },
+    [showError],
+  );
 
-  const handleBatchDelete = async () => {
-    const confirmed = await showConfirm(
-      `Delete ${selected.length} appointment(s)?`,
+  // FullCalendar datesSet callback - fires when visible range changes
+  const handleDatesSet = useCallback(
+    (arg: DatesSetArg) => {
+      const start = arg.startStr.slice(0, 10);
+      const end = arg.endStr.slice(0, 10);
+      currentRangeRef.current = { start, end };
+      fetchAppointments(start, end);
+    },
+    [fetchAppointments],
+  );
+
+  // Refetch current range helper
+  const refetchCurrentRange = useCallback(() => {
+    if (currentRangeRef.current) {
+      fetchAppointments(
+        currentRangeRef.current.start,
+        currentRangeRef.current.end,
+      );
+    }
+  }, [fetchAppointments]);
+
+  // Auto-sync polling: every 60 seconds when connected
+  useEffect(() => {
+    if (!googleStatus?.connected) return;
+
+    const intervalId = setInterval(() => {
+      api
+        .post("/google-calendar/sync")
+        .then(() => {
+          fetchGoogleStatus();
+          refetchCurrentRange();
+        })
+        .catch(() => {
+          // Refresh status to surface any token errors
+          fetchGoogleStatus();
+        });
+    }, 60000);
+
+    return () => clearInterval(intervalId);
+  }, [googleStatus?.connected, fetchGoogleStatus, refetchCurrentRange]);
+
+  // Map appointments to FullCalendar events
+  const calendarEvents = appointments.map((appt) => ({
+    id: appt.id,
+    title: appt.title,
+    start: appt.startTime,
+    end: appt.endTime,
+    editable: appt.source !== "google_calendar",
+    extendedProps: { appointment: appt },
+  }));
+
+  // Custom event content renderer
+  const renderEventContent = (eventInfo: EventContentArg) => {
+    const appointment = eventInfo.event.extendedProps?.appointment as
+      | Appointment
+      | undefined;
+    if (!appointment) return null;
+    const isExternal = appointment.source === "google_calendar";
+    return (
+      <EventCard
+        appointment={appointment}
+        isExternal={isExternal}
+        isDraggable={!isExternal}
+        onClick={() => {}}
+      />
     );
-    if (!confirmed) return;
-    await Promise.all(selected.map((id) => api.delete(`/appointments/${id}`)));
-    setSelected([]);
-    fetchAppointments();
   };
 
-  const handleStatusChange = async (id: string, status: string) => {
-    await api.put(`/appointments/${id}`, { status });
-    fetchAppointments();
+  // dateClick: open create dialog with pre-filled time
+  const handleDateClick = useCallback(
+    (arg: { date: Date; dateStr: string; allDay: boolean }) => {
+      const clickedDate = arg.date;
+      const startTime = formatDateTimeLocal(clickedDate);
+      const endTime = formatDateTimeLocal(
+        new Date(clickedDate.getTime() + 60 * 60 * 1000),
+      );
+
+      setDialogMode("create");
+      setDialogInitialData({
+        startTime,
+        endTime,
+      });
+      setEditingAppointmentId(null);
+      setDialogOpen(true);
+    },
+    [],
+  );
+
+  // select: open create dialog with selected range
+  const handleSelect = useCallback((arg: DateSelectArg) => {
+    const startTime = formatDateTimeLocal(arg.start);
+    const endTime = formatDateTimeLocal(arg.end);
+
+    setDialogMode("create");
+    setDialogInitialData({
+      startTime,
+      endTime,
+    });
+    setEditingAppointmentId(null);
+    setDialogOpen(true);
+
+    // Unselect
+    const calendarApi = arg.view.calendar;
+    calendarApi.unselect();
+  }, []);
+
+  // eventClick: open edit dialog (local) or popover (external)
+  const handleEventClick = useCallback((arg: EventClickArg) => {
+    const appointment = arg.event.extendedProps.appointment as Appointment;
+    const isExternal = appointment.source === "google_calendar";
+
+    if (isExternal) {
+      setPopoverAppointment(appointment);
+      setPopoverAnchorEl(arg.el);
+    } else {
+      setDialogMode("edit");
+      setDialogInitialData({
+        title: appointment.title,
+        customerId: appointment.customerId ?? null,
+        startTime: formatDateTimeLocal(new Date(appointment.startTime)),
+        endTime: formatDateTimeLocal(new Date(appointment.endTime)),
+        status: appointment.status,
+        source: appointment.source,
+        price: appointment.price,
+        notes: appointment.notes,
+      });
+      setEditingAppointmentId(appointment.id);
+      setDialogOpen(true);
+    }
+  }, []);
+
+  // eventDrop: drag-and-drop rescheduling
+  const handleEventDrop = useCallback(
+    async (arg: EventDropArg) => {
+      const appointment = arg.event.extendedProps.appointment as Appointment;
+      const newStart = arg.event.start;
+      const newEnd = arg.event.end;
+
+      if (!newStart || !newEnd) {
+        arg.revert();
+        return;
+      }
+
+      try {
+        await api.put(`/appointments/${appointment.id}`, {
+          startTime: newStart.toISOString(),
+          endTime: newEnd.toISOString(),
+        });
+        showSuccess("Appointment rescheduled");
+        refetchCurrentRange();
+      } catch {
+        arg.revert();
+        showError("Failed to reschedule appointment");
+      }
+    },
+    [showSuccess, showError, refetchCurrentRange],
+  );
+
+  // eventResize: resize rescheduling
+  const handleEventResize = useCallback(
+    async (arg: EventResizeDoneArg) => {
+      const appointment = arg.event.extendedProps.appointment as Appointment;
+      const newStart = arg.event.start;
+      const newEnd = arg.event.end;
+
+      if (!newStart || !newEnd) {
+        arg.revert();
+        return;
+      }
+
+      try {
+        await api.put(`/appointments/${appointment.id}`, {
+          startTime: newStart.toISOString(),
+          endTime: newEnd.toISOString(),
+        });
+        showSuccess("Appointment updated");
+        refetchCurrentRange();
+      } catch {
+        arg.revert();
+        showError("Failed to update appointment");
+      }
+    },
+    [showSuccess, showError, refetchCurrentRange],
+  );
+
+  // Dialog save handler
+  const handleDialogSave = async (data: AppointmentFormData) => {
+    try {
+      if (dialogMode === "create") {
+        await api.post("/appointments", {
+          ...data,
+          startTime: new Date(data.startTime).toISOString(),
+          endTime: new Date(data.endTime).toISOString(),
+        });
+        showSuccess("Appointment created");
+      } else if (editingAppointmentId) {
+        await api.put(`/appointments/${editingAppointmentId}`, {
+          ...data,
+          startTime: new Date(data.startTime).toISOString(),
+          endTime: new Date(data.endTime).toISOString(),
+        });
+        showSuccess("Appointment updated");
+      }
+      setDialogOpen(false);
+      refetchCurrentRange();
+    } catch {
+      showError("Failed to save appointment");
+    }
   };
 
-  const statusColors: Record<string, string> = {
-    scheduled: "#4FC3F7",
-    completed: "#66BB6A",
-    cancelled: "#FF6B6B",
-    no_show: "#FFB74D",
+  // Dialog delete handler
+  const handleDialogDelete = async () => {
+    if (!editingAppointmentId) return;
+    try {
+      await api.delete(`/appointments/${editingAppointmentId}`);
+      showSuccess("Appointment deleted");
+      setDialogOpen(false);
+      refetchCurrentRange();
+    } catch {
+      showError("Failed to delete appointment");
+    }
   };
 
-  const columns: GridColDef[] = [
-    { field: "title", headerName: "Service", flex: 1, minWidth: 120 },
-    {
-      field: "customerName",
-      headerName: "Customer",
-      flex: 1,
-      minWidth: 120,
-      valueGetter: (_value: any, row: any) => row.customer?.name || "Walk-in",
-    },
-    {
-      field: "startTime",
-      headerName: "Date & Time",
-      flex: 1,
-      minWidth: 160,
-      valueFormatter: (value: any) => new Date(value).toLocaleString(),
-    },
-    {
-      field: "status",
-      headerName: "Status",
-      width: 130,
-      renderCell: (params: any) => (
-        <Chip
-          label={params.value}
-          size="small"
-          sx={{
-            background: `${statusColors[params.value] || "#999"}22`,
-            color: statusColors[params.value] || "#999",
-            fontWeight: 600,
-            textTransform: "capitalize",
-          }}
-        />
-      ),
-    },
-    {
-      field: "source",
-      headerName: "Source",
-      width: 110,
-      renderCell: (params: any) => (
-        <Chip
-          label={params.value}
-          size="small"
-          variant="outlined"
-          sx={{
-            textTransform: "capitalize",
-            borderColor: "rgba(255,255,255,0.15)",
-          }}
-        />
-      ),
-    },
-    {
-      field: "actions",
-      headerName: "Actions",
-      width: 220,
-      sortable: false,
-      renderCell: (params: any) => (
-        <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
-          {params.row.status === "scheduled" && (
-            <>
-              <Button
-                size="small"
-                onClick={() => handleStatusChange(params.row.id, "completed")}
-                sx={{ color: "#66BB6A", fontSize: "0.7rem" }}
-              >
-                Complete
-              </Button>
-              <Button
-                size="small"
-                onClick={() => handleStatusChange(params.row.id, "cancelled")}
-                sx={{ color: "#FF6B6B", fontSize: "0.7rem" }}
-              >
-                Cancel
-              </Button>
-            </>
-          )}
-          <IconButton
-            size="small"
-            onClick={() => openEdit(params.row)}
-            sx={{ color: "#4FC3F7" }}
-          >
-            <Edit fontSize="small" />
-          </IconButton>
-          <IconButton
-            size="small"
-            onClick={() => handleDelete(params.row.id)}
-            sx={{ color: "#FF6B6B" }}
-          >
-            <Delete fontSize="small" />
-          </IconButton>
-        </Box>
-      ),
-    },
-  ];
+  // Manual sync
+  const handleManualSync = async () => {
+    try {
+      await api.post("/google-calendar/sync");
+      showSuccess("Sync complete");
+      fetchGoogleStatus();
+      refetchCurrentRange();
+    } catch {
+      showError("Sync failed");
+    }
+  };
 
-  const selectedCustomer =
-    customers.find((c) => c.id === form.customerId) ?? null;
-
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const filteredAppointments = showPast
-    ? appointments.filter((a) => new Date(a.startTime) < todayStart)
-    : appointments.filter((a) => new Date(a.startTime) >= todayStart);
+  // moreLinkContent for month view "+N more" overflow
+  const moreLinkContent = (arg: { num: number }) => {
+    return `+${arg.num} more`;
+  };
 
   return (
     <Fade in timeout={500}>
       <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        {/* Header area */}
         <Box
           sx={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            mb: 3,
+            mb: 2,
+            flexWrap: "wrap",
+            gap: 1,
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <CalendarMonth sx={{ color: "#4FC3F7", fontSize: 32 }} />
-            <Typography variant="h4">Appointments</Typography>
+            <Typography variant="h4">Calendar</Typography>
           </Box>
-          <Button variant="contained" startIcon={<Add />} onClick={openCreate}>
-            New Appointment
-          </Button>
+
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              flexWrap: "wrap",
+            }}
+          >
+            {googleStatus?.connected && (
+              <SyncStatusIndicator
+                lastSyncAt={googleStatus.lastSyncAt}
+                syncError={googleStatus.error}
+                onManualSync={handleManualSync}
+              />
+            )}
+          </Box>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-          <Button
-            size="small"
-            variant={showPast ? "outlined" : "contained"}
-            onClick={() => setShowPast(false)}
-          >
-            Upcoming
-          </Button>
-          <Button
-            size="small"
-            variant={showPast ? "contained" : "outlined"}
-            onClick={() => setShowPast(true)}
-          >
-            Past
-          </Button>
-          {selected.length > 0 && (
-            <Button
-              size="small"
-              color="error"
-              variant="outlined"
-              onClick={handleBatchDelete}
-            >
-              Delete {selected.length} selected
-            </Button>
-          )}
-        </Box>
+        {/* Reminder Banner for users who haven't connected Google Calendar */}
+        {googleStatus && !googleStatus.connected && !googleStatus.error && (
+          <ReminderBanner onNavigateToSettings={() => navigate("/settings")} />
+        )}
 
+        {/* Calendar */}
         <Box
+          className={mode === "dark" ? "calendar-dark" : "calendar-light"}
           sx={{
-            background: "rgba(26,31,58,0.7)",
-            borderRadius: 2,
-            border: "1px solid rgba(255,255,255,0.08)",
-            overflow: "hidden",
             flex: 1,
             minHeight: 0,
-          }}
-        >
-          <DataGrid
-            rows={filteredAppointments}
-            columns={columns}
-            loading={loading}
-            checkboxSelection
-            onRowSelectionModelChange={(model: any) =>
-              setSelected(Array.from(model?.ids ?? []) as string[])
-            }
-            pageSizeOptions={[10]}
-            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-            sx={{
-              border: "none",
-              "& .MuiDataGrid-columnHeaders": {
-                background: "rgba(255,255,255,0.03)",
+            "& .fc": {
+              height: "100%",
+              fontFamily: "inherit",
+            },
+            "& .fc-toolbar-title": {
+              fontSize: "1.2rem !important",
+              fontWeight: 600,
+              color: mode === "dark" ? "#E8EAED" : "#1a1a1a",
+            },
+            "& .fc-button": {
+              background:
+                mode === "dark"
+                  ? "rgba(26, 31, 58, 0.7) !important"
+                  : "#ffffff !important",
+              border:
+                mode === "dark"
+                  ? "1px solid rgba(255,255,255,0.12) !important"
+                  : "1px solid #d1d1d6 !important",
+              color:
+                mode === "dark" ? "#E8EAED !important" : "#1a1a1a !important",
+              borderRadius: "8px !important",
+              fontSize: "0.85rem !important",
+              padding: "6px 14px !important",
+              textTransform: "capitalize",
+              transition: "all 0.2s ease",
+              "&:hover": {
+                background:
+                  mode === "dark"
+                    ? "rgba(79, 195, 247, 0.15) !important"
+                    : "rgba(79, 195, 247, 0.08) !important",
+                borderColor: "rgba(79, 195, 247, 0.4) !important",
               },
-              "& .MuiDataGrid-row:hover": {
-                background: "rgba(79,195,247,0.04)",
-              },
-              "& .MuiDataGrid-cell": { borderColor: "rgba(255,255,255,0.04)" },
-            }}
-          />
-        </Box>
-
-        <Dialog
-          open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
-          maxWidth="sm"
-          fullWidth
-          slotProps={{
-            paper: {
-              sx: {
-                background: "#1a1f3a",
-                backgroundImage: "none",
-                borderRadius: 4,
-              },
+            },
+            "& .fc-button-active": {
+              background:
+                mode === "dark"
+                  ? "rgba(79, 195, 247, 0.25) !important"
+                  : "rgba(79, 195, 247, 0.15) !important",
+              borderColor: "#4FC3F7 !important",
+              color: "#4FC3F7 !important",
+            },
+            "& .fc-scrollgrid": {
+              borderColor:
+                mode === "dark"
+                  ? "rgba(255,255,255,0.06) !important"
+                  : "#e5e5ea !important",
+            },
+            "& .fc-scrollgrid td, & .fc-scrollgrid th": {
+              borderColor:
+                mode === "dark"
+                  ? "rgba(255,255,255,0.06) !important"
+                  : "#e5e5ea !important",
+            },
+            "& .fc-timegrid-slot": {
+              height: "48px !important",
+            },
+            "& .fc-timegrid-slot-label": {
+              color: mode === "dark" ? "#9AA0B4" : "#6e6e73",
+              fontSize: "0.75rem",
+            },
+            "& .fc-col-header-cell": {
+              background: mode === "dark" ? "rgba(26, 31, 58, 0.5)" : "#f5f5f7",
+              borderColor:
+                mode === "dark"
+                  ? "rgba(255,255,255,0.06) !important"
+                  : "#e5e5ea !important",
+              padding: "8px 0",
+            },
+            "& .fc-col-header-cell-cushion": {
+              color: mode === "dark" ? "#9AA0B4" : "#6e6e73",
+              fontWeight: 500,
+              fontSize: "0.85rem",
+              textDecoration: "none",
+            },
+            "& .fc-daygrid-day-number": {
+              color: mode === "dark" ? "#9AA0B4" : "#6e6e73",
+              textDecoration: "none",
+              fontSize: "0.85rem",
+              padding: "4px 8px",
+            },
+            "& .fc-day-today": {
+              background:
+                mode === "dark"
+                  ? "rgba(79, 195, 247, 0.04) !important"
+                  : "rgba(79, 195, 247, 0.06) !important",
+            },
+            "& .fc-timegrid-now-indicator-line": {
+              borderColor: "#4FC3F7 !important",
+              borderWidth: "2px !important",
+            },
+            "& .fc-timegrid-now-indicator-arrow": {
+              borderColor: "#4FC3F7 !important",
+              color: "#4FC3F7 !important",
+            },
+            "& .fc-event": {
+              background: "transparent !important",
+              border: "none !important",
+              boxShadow: "none !important",
+              cursor: "pointer",
+            },
+            "& .fc-event-main": {
+              padding: 0,
+            },
+            "& .fc-more-link": {
+              color: "#4FC3F7 !important",
+              fontWeight: 600,
+              fontSize: "0.8rem",
+            },
+            "& .fc-highlight": {
+              background:
+                mode === "dark"
+                  ? "rgba(79, 195, 247, 0.08) !important"
+                  : "rgba(79, 195, 247, 0.12) !important",
+            },
+            "& .fc-popover": {
+              background:
+                mode === "dark"
+                  ? "rgba(26, 31, 58, 0.95) !important"
+                  : "#ffffff !important",
+              border:
+                mode === "dark"
+                  ? "1px solid rgba(255,255,255,0.1) !important"
+                  : "1px solid #e5e5ea !important",
+              borderRadius: "12px !important",
+            },
+            "& .fc-popover-header": {
+              background:
+                mode === "dark"
+                  ? "rgba(26, 31, 58, 0.9) !important"
+                  : "#f5f5f7 !important",
+              color:
+                mode === "dark" ? "#E8EAED !important" : "#1a1a1a !important",
             },
           }}
         >
-          <DialogTitle>
-            {editingId ? "Edit Appointment" : "New Appointment"}
-          </DialogTitle>
-          <DialogContent
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 2.5,
-              pt: "16px !important",
+          {/* @ts-expect-error FullCalendar class component incompatible with React 19 JSX types */}
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="timeGridWeek"
+            headerToolbar={{
+              left: "prev,next today",
+              center: "title",
+              right: "timeGridDay,timeGridWeek,dayGridMonth",
             }}
-          >
-            <TextField
-              label="Service / Title"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              fullWidth
-            />
-            <Autocomplete
-              options={customers}
-              getOptionLabel={(c) => c.name}
-              value={selectedCustomer}
-              onChange={(_e, value) =>
-                setForm({ ...form, customerId: value?.id ?? "" })
-              }
-              renderInput={(params) => (
-                <TextField {...params} label="Customer (optional)" />
-              )}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
-            />
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ mb: 0.5, display: "block", pl: 0.5 }}
-              >
-                Start Time
-              </Typography>
-              <TextField
-                type="datetime-local"
-                value={form.startTime}
-                onChange={(e) =>
-                  setForm({ ...form, startTime: e.target.value })
-                }
-                fullWidth
-              />
-            </Box>
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ mb: 0.5, display: "block", pl: 0.5 }}
-              >
-                End Time
-              </Typography>
-              <TextField
-                type="datetime-local"
-                value={form.endTime}
-                onChange={(e) => setForm({ ...form, endTime: e.target.value })}
-                fullWidth
-              />
-            </Box>
-            <TextField
-              label="Source"
-              select
-              value={form.source}
-              onChange={(e) => setForm({ ...form, source: e.target.value })}
-              fullWidth
-            >
-              <MenuItem value="manual">Manual</MenuItem>
-              <MenuItem value="walk_in">Walk-in</MenuItem>
-            </TextField>
-            {editingId && (
-              <TextField
-                label="Status"
-                select
-                value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value })}
-                fullWidth
-              >
-                <MenuItem value="scheduled">Scheduled</MenuItem>
-                <MenuItem value="completed">Completed</MenuItem>
-                <MenuItem value="cancelled">Cancelled</MenuItem>
-                <MenuItem value="no_show">No Show</MenuItem>
-              </TextField>
-            )}
-            <TextField
-              label="Price (₪)"
-              type="number"
-              value={form.price}
-              onChange={(e) => setForm({ ...form, price: e.target.value })}
-              fullWidth
-              placeholder="Optional"
-            />
-            <TextField
-              label="Notes"
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              multiline
-              rows={2}
-              fullWidth
-            />
-          </DialogContent>
-          <DialogActions sx={{ p: 3 }}>
-            <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button variant="contained" onClick={handleSave}>
-              {editingId ? "Save Changes" : "Create"}
-            </Button>
-          </DialogActions>
-        </Dialog>
+            nowIndicator={true}
+            editable={true}
+            selectable={true}
+            selectMirror={true}
+            dayMaxEvents={3}
+            events={calendarEvents}
+            eventContent={renderEventContent}
+            datesSet={handleDatesSet}
+            dateClick={handleDateClick}
+            select={handleSelect}
+            eventClick={handleEventClick}
+            eventDrop={handleEventDrop}
+            eventResize={handleEventResize}
+            moreLinkContent={moreLinkContent}
+            slotMinTime="06:00:00"
+            slotMaxTime="22:00:00"
+            allDaySlot={false}
+            slotDuration="00:30:00"
+            businessHours={{
+              daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+              startTime: "08:00",
+              endTime: "18:00",
+            }}
+            height="100%"
+          />
+        </Box>
+
+        {/* Appointment Dialog */}
+        <AppointmentDialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          onSave={handleDialogSave}
+          onDelete={dialogMode === "edit" ? handleDialogDelete : undefined}
+          initialData={dialogInitialData}
+          mode={dialogMode}
+          customers={customers}
+        />
+
+        {/* External Event Popover */}
+        {popoverAppointment && (
+          <ExternalEventPopover
+            appointment={popoverAppointment}
+            anchorEl={popoverAnchorEl}
+            onClose={() => {
+              setPopoverAppointment(null);
+              setPopoverAnchorEl(null);
+            }}
+          />
+        )}
       </Box>
     </Fade>
   );
 };
+
+// Helper: format Date to datetime-local input value
+function formatDateTimeLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
 
 export default AppointmentsPage;

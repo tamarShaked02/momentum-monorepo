@@ -4,6 +4,8 @@ import { validate } from "../middleware/validate.js";
 import { createAppointmentSchema } from "../validation/schemas.js";
 import { getPagination, paginatedResponse } from "../utils/pagination.js";
 import prisma from "../config/db.js";
+import { pushToGoogle } from "../services/syncEngine.js";
+import { crmEventBus } from "../services/eventBus.js";
 
 /**
  * @swagger
@@ -270,8 +272,120 @@ router.post(
       });
 
       res.status(201).json(appointment);
+
+      // Non-blocking: push to Google Calendar if user has a token
+      prisma.googleCalendarToken
+        .findUnique({ where: { userId: req.userId! } })
+        .then((token) => {
+          if (token) {
+            pushToGoogle(req.userId!, appointment, "create").catch((err) => {
+              console.error("Google Calendar sync (create) failed:", err);
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("Google Calendar token check failed:", err);
+        });
     } catch (error) {
       console.error("Create appointment error:", error);
+      res.status(500).json({ error: "Failed to create appointment." });
+    }
+  },
+);
+
+/**
+ * @swagger
+ * /api/appointments/from-contact/{contactId}:
+ *   post:
+ *     summary: Create a new appointment pre-populated with a customer (from contact profile)
+ *     tags: [Appointments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: contactId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The customer/contact ID to link
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AppointmentBody'
+ *     responses:
+ *       201:
+ *         description: Appointment created with pre-populated customer
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Appointment'
+ *       400:
+ *         description: Title, startTime, and endTime are required
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Contact not found
+ */
+router.post(
+  "/from-contact/:contactId",
+  authMiddleware,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { contactId } = req.params;
+      const { title, startTime, endTime, status, source, price, notes } =
+        req.body;
+
+      if (!title || !startTime || !endTime) {
+        res
+          .status(400)
+          .json({ error: "Title, startTime, and endTime are required." });
+        return;
+      }
+
+      // Verify the contact exists and belongs to the user
+      const contact = await prisma.customer.findFirst({
+        where: { id: contactId, userId: req.userId! },
+      });
+
+      if (!contact) {
+        res.status(404).json({ error: "Contact not found." });
+        return;
+      }
+
+      const appointment = await prisma.appointment.create({
+        data: {
+          userId: req.userId!,
+          title,
+          startTime: new Date(startTime),
+          endTime: new Date(endTime),
+          customerId: contactId,
+          status: status || "scheduled",
+          source: source || "manual",
+          price: price != null ? Number(price) : null,
+          notes: notes || null,
+        },
+        include: { customer: { select: { id: true, name: true } } },
+      });
+
+      res.status(201).json(appointment);
+
+      // Non-blocking: push to Google Calendar if user has a token
+      prisma.googleCalendarToken
+        .findUnique({ where: { userId: req.userId! } })
+        .then((token) => {
+          if (token) {
+            pushToGoogle(req.userId!, appointment, "create").catch((err) => {
+              console.error("Google Calendar sync (create) failed:", err);
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("Google Calendar token check failed:", err);
+        });
+    } catch (error) {
+      console.error("Create appointment from contact error:", error);
       res.status(500).json({ error: "Failed to create appointment." });
     }
   },
@@ -318,6 +432,16 @@ router.put(
       const { title, startTime, endTime, customerId, status, price, notes } =
         req.body;
 
+      // Fetch existing appointment to detect status change
+      const existing = await prisma.appointment.findFirst({
+        where: { id, userId: req.userId! },
+      });
+
+      if (!existing) {
+        res.status(404).json({ error: "Appointment not found." });
+        return;
+      }
+
       const appointment = await prisma.appointment.updateMany({
         where: { id, userId: req.userId! },
         data: {
@@ -343,7 +467,70 @@ router.put(
         include: { customer: { select: { id: true, name: true } } },
       });
 
+      // If status changed to "completed" and appointment has a linked customer, create activity
+      if (
+        updated &&
+        status === "completed" &&
+        existing.status !== "completed" &&
+        updated.customerId
+      ) {
+        await prisma.activity.create({
+          data: {
+            userId: req.userId!,
+            type: "appointment",
+            description: `Appointment "${updated.title}" completed`,
+            contactId: updated.customerId,
+            isSystem: true,
+            metadata: {
+              appointmentId: updated.id,
+              title: updated.title,
+              date: updated.startTime.toISOString(),
+              price: updated.price,
+            },
+          },
+        });
+
+        // Fetch the contact for the event emission
+        const contact = await prisma.customer.findUnique({
+          where: { id: updated.customerId },
+        });
+
+        if (contact) {
+          crmEventBus.emitAppointmentCompleted(
+            req.userId!,
+            {
+              id: updated.id,
+              userId: req.userId!,
+              customerId: updated.customerId,
+              title: updated.title,
+              startTime: updated.startTime,
+              endTime: updated.endTime,
+              status: updated.status,
+              price: updated.price,
+              notes: updated.notes,
+            },
+            contact as any,
+          );
+        }
+      }
+
       res.json(updated);
+
+      // Non-blocking: push to Google Calendar if user has a token
+      if (updated) {
+        prisma.googleCalendarToken
+          .findUnique({ where: { userId: req.userId! } })
+          .then((token) => {
+            if (token) {
+              pushToGoogle(req.userId!, updated, "update").catch((err) => {
+                console.error("Google Calendar sync (update) failed:", err);
+              });
+            }
+          })
+          .catch((err) => {
+            console.error("Google Calendar token check failed:", err);
+          });
+      }
     } catch (error) {
       console.error("Update appointment error:", error);
       res.status(500).json({ error: "Failed to update appointment." });
@@ -384,16 +571,35 @@ router.delete(
     try {
       const { id } = req.params;
 
-      const result = await prisma.appointment.deleteMany({
+      // Fetch the appointment before deleting to get googleEventId for sync
+      const appointment = await prisma.appointment.findFirst({
         where: { id, userId: req.userId! },
       });
 
-      if (result.count === 0) {
+      if (!appointment) {
         res.status(404).json({ error: "Appointment not found." });
         return;
       }
 
+      await prisma.appointment.delete({
+        where: { id },
+      });
+
       res.json({ message: "Appointment cancelled successfully." });
+
+      // Non-blocking: push delete to Google Calendar if user has a token
+      prisma.googleCalendarToken
+        .findUnique({ where: { userId: req.userId! } })
+        .then((token) => {
+          if (token) {
+            pushToGoogle(req.userId!, appointment, "delete").catch((err) => {
+              console.error("Google Calendar sync (delete) failed:", err);
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("Google Calendar token check failed:", err);
+        });
     } catch (error) {
       console.error("Delete appointment error:", error);
       res.status(500).json({ error: "Failed to delete appointment." });

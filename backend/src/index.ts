@@ -15,6 +15,15 @@ import inventoryRoutes from "./routes/inventory.js";
 import tasksRoutes from "./routes/tasks.js";
 import marketingRoutes from "./routes/marketing.js";
 import telegramRoutes from "./routes/telegram.js";
+import googleCalendarRoutes from "./routes/googleCalendar.js";
+import pipelinesRoutes from "./routes/pipelines.js";
+import dealsRoutes from "./routes/deals.js";
+import activitiesRoutes from "./routes/activities.js";
+import customFieldsRoutes from "./routes/customFields.js";
+import automationRulesRoutes from "./routes/automationRules.js";
+import crmDashboardRoutes from "./routes/crmDashboard.js";
+import crmSuggestionsRoutes from "./routes/crmSuggestions.js";
+import "./services/automationEngine.js"; // Self-registers event listeners on import
 import bot from "./telegram/bot.js";
 
 const app = express();
@@ -49,17 +58,18 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/tasks", tasksRoutes);
 app.use("/api/marketing", marketingRoutes);
 app.use("/api/telegram", telegramRoutes);
+app.use("/api/google-calendar", googleCalendarRoutes);
+app.use("/api/pipelines", pipelinesRoutes);
+app.use("/api/deals", dealsRoutes);
+app.use("/api/activities", activitiesRoutes);
+app.use("/api/custom-fields", customFieldsRoutes);
+app.use("/api/automation-rules", automationRulesRoutes);
+app.use("/api/crm/dashboard", crmDashboardRoutes);
+app.use("/api/crm", crmSuggestionsRoutes);
 
 // Health check
 app.get("/", (_req, res) => {
   res.json({ status: "Momentum API is running", version: "1.0.0" });
-});
-
-// Google Calendar sync placeholder
-app.post("/api/appointments/sync", (_req, res) => {
-  res.json({
-    message: "Google Calendar sync is a placeholder for future implementation.",
-  });
 });
 
 app.listen(env.PORT, () => {

@@ -42,8 +42,16 @@ export interface Appointment {
   source: string;
   price: number | null;
   notes: string | null;
+  googleEventId?: string | null;
   createdAt: string;
   customer?: { id: string; name: string; phone?: string };
+}
+
+export interface GoogleCalendarStatus {
+  connected: boolean;
+  email: string | null;
+  lastSyncAt: string | null;
+  error: string | null;
 }
 
 export interface InventoryItem {

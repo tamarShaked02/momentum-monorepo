@@ -1,0 +1,335 @@
+/* FullCalendar Theme Overrides (Dark & Light)
+ * Requirements: 10.1, 10.3, 10.4, 10.5, 12.1, 12.2, 12.3
+ */
+
+/* === Shared Transitions === */
+.fc .fc-view-harness {
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+}
+
+.fc .fc-view {
+  transition: opacity 200ms ease;
+}
+
+.fc .fc-scroller {
+  transition: opacity 200ms ease;
+}
+
+.fc .fc-toolbar {
+  transition: opacity 200ms ease;
+}
+
+.fc td,
+.fc th {
+  transition: background 200ms ease;
+}
+
+/* === Current Time Indicator (shared) === */
+.fc .fc-timegrid-now-indicator-line {
+  border-color: #4fc3f7;
+  border-width: 2px;
+}
+
+.fc .fc-timegrid-now-indicator-arrow {
+  border-top-color: #4fc3f7;
+  border-bottom-color: #4fc3f7;
+}
+
+.fc .fc-timegrid-now-indicator-arrow::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4fc3f7;
+  box-shadow: 0 0 6px rgba(79, 195, 247, 0.6);
+}
+
+/* === Event Base Styling (shared) === */
+.fc .fc-event {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.fc .fc-event:hover {
+  transform: translateY(-1px);
+}
+
+.fc .fc-event-main {
+  padding: 0;
+}
+
+/* === Booked Slots (shared) === */
+.fc .fc-timegrid-event-harness {
+  position: relative;
+}
+
+/* === More Link (shared) === */
+.fc .fc-more-link {
+  color: #4fc3f7;
+  font-weight: 600;
+  font-size: 0.8rem;
+  transition: color 200ms ease;
+}
+
+.fc .fc-more-link:hover {
+  color: #81d4fa;
+}
+
+/* ============================================================
+   DARK MODE
+   ============================================================ */
+.calendar-dark {
+  --fc-border-color: rgba(255, 255, 255, 0.06);
+  --fc-page-bg-color: #0a0e27;
+  --fc-neutral-bg-color: rgba(10, 14, 39, 0.6);
+  --fc-today-bg-color: rgba(79, 195, 247, 0.04);
+  --fc-now-indicator-color: #4fc3f7;
+  --fc-highlight-color: rgba(79, 195, 247, 0.08);
+  --fc-non-business-color: rgba(0, 0, 0, 0.25);
+  --fc-event-border-color: transparent;
+  --fc-event-bg-color: transparent;
+  --fc-event-text-color: #e8eaed;
+}
+
+.calendar-dark .fc {
+  background: #0a0e27;
+}
+
+.calendar-dark .fc-theme-standard td,
+.calendar-dark .fc-theme-standard th {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.calendar-dark .fc-theme-standard .fc-scrollgrid {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.calendar-dark .fc .fc-timegrid-slot {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.calendar-dark .fc .fc-timegrid-axis {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.calendar-dark .fc .fc-daygrid-day {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.calendar-dark .fc .fc-non-business {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.calendar-dark .fc .fc-timegrid-slot:not(.fc-timegrid-slot-minor) {
+  border-top-color: rgba(255, 255, 255, 0.06);
+}
+
+.calendar-dark .fc .fc-timegrid-event-harness::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(79, 195, 247, 0.03);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.calendar-dark .fc .fc-timegrid-slot:hover {
+  background: rgba(79, 195, 247, 0.06);
+}
+
+.calendar-dark .fc .fc-timegrid-slot-lane:hover {
+  background: rgba(79, 195, 247, 0.06);
+  cursor: pointer;
+}
+
+.calendar-dark .fc .fc-daygrid-day:hover {
+  background: rgba(79, 195, 247, 0.04);
+}
+
+.calendar-dark .fc .fc-highlight {
+  background: rgba(79, 195, 247, 0.1);
+  border-radius: 4px;
+}
+
+.calendar-dark .fc .fc-col-header-cell {
+  background: rgba(26, 31, 58, 0.5);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.calendar-dark .fc .fc-col-header-cell-cushion {
+  color: #9aa0b4;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.calendar-dark .fc .fc-day-today {
+  background: rgba(79, 195, 247, 0.04);
+}
+
+.calendar-dark .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  color: #4fc3f7;
+  font-weight: 600;
+}
+
+.calendar-dark .fc .fc-timegrid-slot-label-cushion {
+  color: #9aa0b4;
+  font-size: 0.75rem;
+}
+
+.calendar-dark .fc .fc-daygrid-day-number {
+  color: #9aa0b4;
+  text-decoration: none;
+}
+
+.calendar-dark .fc .fc-popover {
+  background: rgba(26, 31, 58, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+}
+
+.calendar-dark .fc .fc-popover-header {
+  background: rgba(26, 31, 58, 0.9);
+  color: #e8eaed;
+  border-radius: 12px 12px 0 0;
+}
+
+.calendar-dark .fc .fc-popover-body {
+  background: transparent;
+}
+
+/* ============================================================
+   LIGHT MODE
+   ============================================================ */
+.calendar-light {
+  --fc-border-color: #e5e5ea;
+  --fc-page-bg-color: #ffffff;
+  --fc-neutral-bg-color: #f9f9f9;
+  --fc-today-bg-color: rgba(79, 195, 247, 0.06);
+  --fc-now-indicator-color: #0288d1;
+  --fc-highlight-color: rgba(79, 195, 247, 0.12);
+  --fc-non-business-color: rgba(0, 0, 0, 0.03);
+  --fc-event-border-color: transparent;
+  --fc-event-bg-color: transparent;
+  --fc-event-text-color: #1a1a1a;
+}
+
+.calendar-light .fc {
+  background: #ffffff;
+}
+
+.calendar-light .fc-theme-standard td,
+.calendar-light .fc-theme-standard th {
+  border-color: #e5e5ea;
+}
+
+.calendar-light .fc-theme-standard .fc-scrollgrid {
+  border-color: #e5e5ea;
+}
+
+.calendar-light .fc .fc-timegrid-slot {
+  border-color: #e5e5ea;
+}
+
+.calendar-light .fc .fc-timegrid-axis {
+  border-color: #e5e5ea;
+}
+
+.calendar-light .fc .fc-daygrid-day {
+  border-color: #e5e5ea;
+}
+
+.calendar-light .fc .fc-non-business {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.calendar-light .fc .fc-timegrid-slot:not(.fc-timegrid-slot-minor) {
+  border-top-color: #e5e5ea;
+}
+
+.calendar-light .fc .fc-timegrid-event-harness::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(79, 195, 247, 0.05);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.calendar-light .fc .fc-timegrid-slot:hover {
+  background: rgba(79, 195, 247, 0.08);
+}
+
+.calendar-light .fc .fc-timegrid-slot-lane:hover {
+  background: rgba(79, 195, 247, 0.08);
+  cursor: pointer;
+}
+
+.calendar-light .fc .fc-daygrid-day:hover {
+  background: rgba(79, 195, 247, 0.06);
+}
+
+.calendar-light .fc .fc-highlight {
+  background: rgba(79, 195, 247, 0.14);
+  border-radius: 4px;
+}
+
+.calendar-light .fc .fc-col-header-cell {
+  background: #f5f5f7;
+  border-color: #e5e5ea;
+}
+
+.calendar-light .fc .fc-col-header-cell-cushion {
+  color: #6e6e73;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.calendar-light .fc .fc-day-today {
+  background: rgba(79, 195, 247, 0.06);
+}
+
+.calendar-light .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  color: #0288d1;
+  font-weight: 600;
+}
+
+.calendar-light .fc .fc-timegrid-slot-label-cushion {
+  color: #6e6e73;
+  font-size: 0.75rem;
+}
+
+.calendar-light .fc .fc-daygrid-day-number {
+  color: #6e6e73;
+  text-decoration: none;
+}
+
+.calendar-light .fc .fc-popover {
+  background: #ffffff;
+  border: 1px solid #e5e5ea;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.calendar-light .fc .fc-popover-header {
+  background: #f5f5f7;
+  color: #1a1a1a;
+  border-radius: 12px 12px 0 0;
+}
+
+.calendar-light .fc .fc-popover-body {
+  background: transparent;
+}

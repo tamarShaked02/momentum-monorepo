@@ -4,11 +4,11 @@ export const createAppointmentSchema = z.object({
   title: z.string().min(1, "Title is required"),
   startTime: z.string().min(1, "Start time is required"),
   endTime: z.string().min(1, "End time is required"),
-  customerId: z.string().optional(),
-  status: z.enum(["scheduled", "completed", "cancelled"]).optional(),
-  source: z.enum(["manual", "telegram", "google"]).optional(),
-  price: z.number().optional(),
-  notes: z.string().optional(),
+  customerId: z.string().nullable().optional(),
+  status: z.enum(["scheduled", "completed", "cancelled", "no_show"]).optional(),
+  source: z.string().optional(),
+  price: z.number().nullable().optional(),
+  notes: z.string().nullable().optional(),
 });
 
 export const createCustomerSchema = z.object({
@@ -36,4 +36,6 @@ export const createTaskSchema = z.object({
   priority: z.enum(["low", "medium", "high"]).optional(),
   category: z.string().optional(),
   dueDate: z.string().optional(),
+  contactId: z.string().optional().nullable(),
+  dealId: z.string().optional().nullable(),
 });

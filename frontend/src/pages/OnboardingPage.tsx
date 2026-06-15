@@ -172,9 +172,10 @@ const OnboardingPage: React.FC = () => {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        height: "100vh",
         display: "flex",
         flexDirection: "column",
+        overflow: "hidden",
         background:
           "linear-gradient(145deg, #0a0e27 0%, #1a1f3a 50%, #0d1130 100%)",
       }}
