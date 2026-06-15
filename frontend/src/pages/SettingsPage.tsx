@@ -19,10 +19,12 @@ import {
   Lock,
   Notifications,
   Save,
+  AutoAwesome,
 } from "@mui/icons-material";
 import api from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
 import { useSnackbar } from "../contexts/SnackbarContext";
+import { useNavigate } from "react-router-dom";
 import type { GoogleCalendarStatus } from "../types";
 import IntegrationCard from "../components/settings/IntegrationCard";
 
@@ -31,6 +33,7 @@ const SettingsPage: React.FC = () => {
   const isDark = theme.palette.mode === "dark";
   const { user } = useAuth();
   const { showSuccess, showError } = useSnackbar();
+  const navigate = useNavigate();
 
   // Google Calendar state
   const [googleStatus, setGoogleStatus] = useState<GoogleCalendarStatus | null>(
@@ -361,6 +364,31 @@ const SettingsPage: React.FC = () => {
                 />
               </Box>
             </Box>
+          </Box>
+
+          {/* Modules Section */}
+          <Box sx={sectionStyle}>
+            <Box
+              sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}
+            >
+              <AutoAwesome sx={{ color: "#4FC3F7", fontSize: 20 }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                Modules
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Add or change active modules by talking to the AI assistant. Your
+              current conversation will be continued.
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AutoAwesome sx={{ fontSize: 16 }} />}
+              onClick={() => navigate("/onboarding")}
+              sx={{ borderRadius: "10px", px: 3 }}
+            >
+              Reconfigure Modules
+            </Button>
           </Box>
 
           {/* Integrations Section */}

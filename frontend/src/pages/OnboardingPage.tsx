@@ -46,7 +46,16 @@ const OnboardingPage: React.FC = () => {
   const [started, setStarted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { refreshUser } = useAuth();
+  const { refreshUser, user } = useAuth();
+
+  // If user already has modules configured (returning user), auto-start
+  const isReturning = !!user?.moduleConfig;
+
+  useEffect(() => {
+    if (isReturning && !started) {
+      startOnboarding();
+    }
+  }, [isReturning]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -60,15 +69,15 @@ const OnboardingPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await api.post("/onboarding/start");
-      setMessages([{ role: "assistant", content: res.data.message }]);
+      const greeting = isReturning
+        ? "Welcome back! Tell me what else you need — want to add a module, change your setup, or explore new features?"
+        : res.data.message;
+      setMessages([{ role: "assistant", content: greeting }]);
     } catch {
-      setMessages([
-        {
-          role: "assistant",
-          content:
-            "Hi! I'm your Momentum assistant. Tell me about the business you're building — what do you do?",
-        },
-      ]);
+      const fallback = isReturning
+        ? "Welcome back! What would you like to change about your setup? I can add new modules or reconfigure existing ones."
+        : "Hi! I'm your Momentum assistant. Tell me about the business you're building — what do you do?";
+      setMessages([{ role: "assistant", content: fallback }]);
     } finally {
       setLoading(false);
     }
@@ -101,6 +110,24 @@ const OnboardingPage: React.FC = () => {
           ...newHistory,
           { role: "assistant", content: data.summary! },
         ]);
+        // Infer mode from summary/context if not explicitly provided by AI
+        if (!data.mode && isReturning) {
+          const summaryLower = (data.summary || "").toLowerCase();
+          const lastUserMsg = userMsg.content.toLowerCase();
+          const removeIndicators = [
+            "remove",
+            "disable",
+            "turn off",
+            "don't want",
+            "dont want",
+            "no longer",
+            "not want",
+          ];
+          const isRemove = removeIndicators.some(
+            (k) => summaryLower.includes(k) || lastUserMsg.includes(k),
+          );
+          data.mode = isRemove ? "remove" : "add";
+        }
         setRecommendation(data);
       }
     } catch {
@@ -121,9 +148,12 @@ const OnboardingPage: React.FC = () => {
     if (!recommendation) return;
     setConfirming(true);
     try {
+      // Use the mode from the AI recommendation, or default based on user state
+      const mode = recommendation.mode || (isReturning ? "add" : "replace");
       await api.post("/onboarding/confirm", {
         recommended_modules: recommendation.recommended_modules,
         businessType: recommendation.businessType,
+        mode,
       });
       await refreshUser();
       navigate("/dashboard");
@@ -186,24 +216,46 @@ const OnboardingPage: React.FC = () => {
           p: 3,
           textAlign: "center",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            justifyContent: "center",
-          }}
-        >
-          <AutoAwesome sx={{ color: "#4FC3F7" }} />
-          <Typography variant="h5" fontWeight={700}>
-            Momentum Setup
+        {isReturning && (
+          <Button
+            size="small"
+            onClick={() => navigate("/settings")}
+            sx={{
+              position: "absolute",
+              left: 16,
+              color: "text.secondary",
+              textTransform: "none",
+            }}
+          >
+            ← Back
+          </Button>
+        )}
+        <Box>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              justifyContent: "center",
+            }}
+          >
+            <AutoAwesome sx={{ color: "#4FC3F7" }} />
+            <Typography variant="h5" fontWeight={700}>
+              {isReturning ? "Reconfigure Modules" : "Momentum Setup"}
+            </Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            {isReturning
+              ? "Tell me what modules you'd like to add or change"
+              : "Describe your business and I'll do the rest"}
           </Typography>
         </Box>
-        <Typography variant="body2" color="text.secondary">
-          Describe your business and I'll do the rest
-        </Typography>
       </Box>
 
       {/* Chat Area */}
@@ -342,7 +394,17 @@ const OnboardingPage: React.FC = () => {
                   disabled={confirming}
                   sx={{ mt: 3, py: 1.5 }}
                 >
-                  {confirming ? <CircularProgress size={24} /> : "Let's Go! 🚀"}
+                  {confirming ? (
+                    <CircularProgress size={24} />
+                  ) : isReturning ? (
+                    recommendation?.mode === "remove" ? (
+                      "Remove These Modules ✕"
+                    ) : (
+                      "Add These Modules ✓"
+                    )
+                  ) : (
+                    "Let's Go! 🚀"
+                  )}
                 </Button>
               </CardContent>
             </Card>
