@@ -1,108 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 model User {
-  id               String              @id @default(uuid())
-  email            String              @unique
-  password         String
-  businessName     String?
-  businessType     String?
-  telegramBotToken String?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  moduleConfig     ModuleConfig?
-  customers        Customer[]
-  appointments     Appointment[]
-  inventoryItems   InventoryItem[]
-  tasks            Task[]
-  campaigns        MarketingCampaign[]
+  id                   String               @id @default(uuid())
+  email                String               @unique
+  password             String
+  businessName         String?
+  businessType         String?
+  phone                String?
+  telegramChatId       String?
+  telegramBotToken     String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  activities           Activity[]
+  appointments         Appointment[]
+  automationRules      AutomationRule[]
+  customFields         CustomField[]
+  customers            Customer[]
+  deals                Deal[]
   googleCalendarTokens GoogleCalendarToken?
-  pipelines        Pipeline[]
-  deals            Deal[]
-  tags             Tag[]
-  customFields     CustomField[]
-  automationRules  AutomationRule[]
-  activities       Activity[]
+  inventoryItems       InventoryItem[]
+  campaigns            MarketingCampaign[]
+  moduleConfig         ModuleConfig?
+  pipelines            Pipeline[]
+  tags                 Tag[]
+  tasks                Task[]
 }
 
 model ModuleConfig {
   id                String  @id @default(uuid())
   userId            String  @unique
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   schedulingEnabled Boolean @default(false)
   crmEnabled        Boolean @default(false)
   inventoryEnabled  Boolean @default(false)
   tasksEnabled      Boolean @default(false)
   marketingEnabled  Boolean @default(false)
   analyticsEnabled  Boolean @default(false)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Customer {
-  id              String             @id @default(uuid())
-  userId          String
-  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name            String             @db.VarChar(200)
-  email           String?            @db.VarChar(254)
-  phone           String?            @db.VarChar(30)
-  telegramChatId  String?
-  notes           String?            @db.VarChar(5000)
-  company         String?            @db.VarChar(200)
-  jobTitle        String?            @db.VarChar(200)
-  leadSource      String?            @db.VarChar(100)
-  lifecycleStage  String             @default("lead")
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  appointments    Appointment[]
-  deals           Deal[]
-  activities      Activity[]
-  tags            ContactTag[]
+  id                String             @id @default(uuid())
+  userId            String
+  name              String             @db.VarChar(200)
+  email             String?            @db.VarChar(254)
+  phone             String?            @db.VarChar(30)
+  telegramChatId    String?
+  notes             String?            @db.VarChar(5000)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  company           String?            @db.VarChar(200)
+  jobTitle          String?            @db.VarChar(200)
+  leadSource        String?            @db.VarChar(100)
+  lifecycleStage    String             @default("lead")
+  activities        Activity[]
+  appointments      Appointment[]
+  tags              ContactTag[]
   customFieldValues CustomFieldValue[]
-  linkedTasks     Task[]             @relation("ContactTasks")
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deals             Deal[]
+  linkedTasks       Task[]             @relation("ContactTasks")
 }
 
 model Appointment {
-  id         String    @id @default(uuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  customerId String?
-  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  title      String
-  startTime  DateTime
-  endTime    DateTime
-  status     String    @default("scheduled")
-  source     String    @default("manual")
-  price      Float?
+  id            String    @id @default(uuid())
+  userId        String
+  customerId    String?
+  title         String
+  startTime     DateTime
+  endTime       DateTime
+  status        String    @default("scheduled")
+  source        String    @default("manual")
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  price         Float?
   googleEventId String?
-  notes      String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  customer      Customer? @relation(fields: [customerId], references: [id])
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model GoogleCalendarToken {
   id           String    @id @default(uuid())
   userId       String    @unique
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken  String
   refreshToken String
   expiresAt    DateTime
   email        String
   syncToken    String?
-  calendarId   String?
   lastSyncAt   DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  calendarId   String?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model InventoryItem {
   id           String             @id @default(uuid())
   userId       String
-  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
   sku          String?
   quantity     Int                @default(0)
@@ -111,44 +112,44 @@ model InventoryItem {
   category     String?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
-  history      InventoryHistory[]
   dealItems    DealItem[]
+  history      InventoryHistory[]
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model InventoryHistory {
   id              String        @id @default(uuid())
   inventoryItemId String
-  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
   changeType      String
   quantityChange  Int
   previousQty     Int
   newQty          Int
   note            String?
   createdAt       DateTime      @default(now())
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 }
 
 model Task {
   id          String    @id @default(uuid())
   userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   title       String    @db.VarChar(200)
   description String?
   status      String    @default("pending")
   priority    String    @default("medium")
   category    String?
   dueDate     DateTime?
-  contactId   String?
-  contact     Customer? @relation("ContactTasks", fields: [contactId], references: [id], onDelete: SetNull)
-  dealId      String?
-  deal        Deal?     @relation("DealTasks", fields: [dealId], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  contactId   String?
+  dealId      String?
+  contact     Customer? @relation("ContactTasks", fields: [contactId], references: [id])
+  deal        Deal?     @relation("DealTasks", fields: [dealId], references: [id])
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model MarketingCampaign {
   id                      String    @id @default(uuid())
   userId                  String
-  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name                    String
   goal                    String?
   status                  String    @default("draft")
@@ -157,21 +158,22 @@ model MarketingCampaign {
   emailContent            String?
   socialContent           String?
   imageUrl                String?
-  audienceTags            String[]
-  audienceLifecycleStages String[]
   scheduledAt             DateTime?
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
+  audienceLifecycleStages String[]
+  audienceTags            String[]
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Tag {
   id        String       @id @default(uuid())
   userId    String
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String       @db.VarChar(100)
   color     String?      @db.VarChar(7)
   createdAt DateTime     @default(now())
   contacts  ContactTag[]
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, name])
 }
@@ -179,35 +181,35 @@ model Tag {
 model ContactTag {
   id         String   @id @default(uuid())
   contactId  String
-  contact    Customer @relation(fields: [contactId], references: [id], onDelete: Cascade)
   tagId      String
-  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
   assignedAt DateTime @default(now())
+  contact    Customer @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@unique([contactId, tagId])
 }
 
 model CustomField {
-  id        String            @id @default(uuid())
+  id        String             @id @default(uuid())
   userId    String
-  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String            @db.VarChar(100)
+  name      String             @db.VarChar(100)
   fieldType String
   options   String[]
-  position  Int               @default(0)
-  createdAt DateTime          @default(now())
+  position  Int                @default(0)
+  createdAt DateTime           @default(now())
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   values    CustomFieldValue[]
 }
 
 model CustomFieldValue {
   id            String      @id @default(uuid())
   customFieldId String
-  customField   CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
   contactId     String
-  contact       Customer    @relation(fields: [contactId], references: [id], onDelete: Cascade)
   value         String      @db.VarChar(1000)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+  contact       Customer    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  customField   CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
 
   @@unique([customFieldId, contactId])
 }
@@ -215,25 +217,25 @@ model CustomFieldValue {
 model Pipeline {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String   @db.VarChar(100)
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  stages    Stage[]
   deals     Deal[]
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stages    Stage[]
 }
 
 model Stage {
   id         String   @id @default(uuid())
   pipelineId String
-  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
   name       String   @db.VarChar(50)
   position   Int
   isTerminal Boolean  @default(false)
   dealStatus String?
   createdAt  DateTime @default(now())
   deals      Deal[]
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
 
   @@unique([pipelineId, position])
 }
@@ -241,22 +243,22 @@ model Stage {
 model Deal {
   id                String     @id @default(uuid())
   userId            String
-  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   title             String     @db.VarChar(200)
   value             Float?
   expectedCloseDate DateTime?
   winProbability    Int?
   pipelineId        String
-  pipeline          Pipeline   @relation(fields: [pipelineId], references: [id])
   stageId           String
-  stage             Stage      @relation(fields: [stageId], references: [id])
   contactId         String
-  contact           Customer   @relation(fields: [contactId], references: [id])
   status            String     @default("open")
   closedAt          DateTime?
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   activities        Activity[]
+  contact           Customer   @relation(fields: [contactId], references: [id])
+  pipeline          Pipeline   @relation(fields: [pipelineId], references: [id])
+  stage             Stage      @relation(fields: [stageId], references: [id])
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   items             DealItem[]
   linkedTasks       Task[]     @relation("DealTasks")
 }
@@ -264,13 +266,13 @@ model Deal {
 model DealItem {
   id              String        @id @default(uuid())
   dealId          String
-  deal            Deal          @relation(fields: [dealId], references: [id], onDelete: Cascade)
   inventoryItemId String
-  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
   quantity        Int
   unitPrice       Float
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  deal            Deal          @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
 
   @@unique([dealId, inventoryItemId])
 }
@@ -278,23 +280,22 @@ model DealItem {
 model Activity {
   id          String    @id @default(uuid())
   userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type        String
   description String?   @db.VarChar(5000)
   metadata    Json?
   contactId   String?
-  contact     Customer? @relation(fields: [contactId], references: [id], onDelete: Cascade)
   dealId      String?
-  deal        Deal?     @relation(fields: [dealId], references: [id], onDelete: Cascade)
   isSystem    Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  contact     Customer? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  deal        Deal?     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model AutomationRule {
   id        String              @id @default(uuid())
   userId    String
-  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String              @db.VarChar(200)
   trigger   Json
   actions   Json
@@ -302,16 +303,17 @@ model AutomationRule {
   position  Int                 @default(0)
   createdAt DateTime            @default(now())
   updatedAt DateTime            @updatedAt
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   logs      AutomationRuleLog[]
 }
 
 model AutomationRuleLog {
   id         String         @id @default(uuid())
   ruleId     String
-  rule       AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   success    Boolean
   actionType String
   error      String?
   metadata   Json?
   createdAt  DateTime       @default(now())
+  rule       AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
 }

@@ -225,6 +225,7 @@ router.get(
         email: user.email,
         businessName: user.businessName,
         businessType: user.businessType,
+        phone: user.phone,
         moduleConfig: user.moduleConfig,
       });
     } catch (error) {
@@ -243,18 +244,20 @@ router.put(
   authMiddleware,
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const { businessName } = req.body;
+      const { businessName, phone } = req.body;
 
       const user = await prisma.user.update({
         where: { id: req.userId! },
         data: {
           ...(businessName !== undefined && { businessName }),
+          ...(phone !== undefined && { phone }),
         },
         select: {
           id: true,
           email: true,
           businessName: true,
           businessType: true,
+          phone: true,
         },
       });
 
