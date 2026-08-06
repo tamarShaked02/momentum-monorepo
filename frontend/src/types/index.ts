@@ -3,6 +3,8 @@ export interface User {
   email: string;
   businessName: string | null;
   businessType: string | null;
+  phone?: string | null;
+  telegramChatId?: string | null;
   moduleConfig: ModuleConfig | null;
 }
 

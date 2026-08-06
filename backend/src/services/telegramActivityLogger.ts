@@ -16,7 +16,7 @@ export type TelegramMessageDirection = "inbound" | "outbound";
  */
 export interface LogTelegramActivityParams {
   userId: string;
-  contactId: string;
+  contactId?: string | null;
   direction: TelegramMessageDirection;
   text: string;
 }
@@ -45,8 +45,8 @@ export async function logTelegramActivity(
       type: "telegram_message",
       description:
         direction === "inbound"
-          ? `Received Telegram message from contact`
-          : `Sent Telegram message to contact`,
+          ? (contactId ? `Received Telegram message from contact` : `Received Telegram message from owner`)
+          : (contactId ? `Sent Telegram message to contact` : `Sent Telegram message to owner`),
       metadata: {
         direction,
         text: truncatedText,

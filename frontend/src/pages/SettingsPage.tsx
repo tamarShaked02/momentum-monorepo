@@ -41,9 +41,9 @@ const SettingsPage: React.FC = () => {
   );
   const [loading, setLoading] = useState(true);
 
-  // Profile form
   const [businessName, setBusinessName] = useState(user?.businessName || "");
   const [email] = useState(user?.email || "");
+  const [phone, setPhone] = useState(user?.phone || "");
   const [profileSaving, setProfileSaving] = useState(false);
 
   // Password form
@@ -76,6 +76,7 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     if (user?.businessName) setBusinessName(user.businessName);
+    if (user?.phone) setPhone(user.phone);
   }, [user]);
 
   const handleConnect = async () => {
@@ -105,7 +106,7 @@ const SettingsPage: React.FC = () => {
   const handleProfileSave = async () => {
     setProfileSaving(true);
     try {
-      await api.put("/auth/profile", { businessName });
+      await api.put("/auth/profile", { businessName, phone });
       showSuccess("Profile updated");
     } catch {
       showError("Failed to update profile");
@@ -203,6 +204,15 @@ const SettingsPage: React.FC = () => {
               fullWidth
               size="small"
               sx={{ mb: 2 }}
+            />
+            <TextField
+              label="Phone Number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              fullWidth
+              size="small"
+              sx={{ mb: 2 }}
+              helperText="Add your phone number to link your Telegram account"
             />
             <TextField
               label="Email"

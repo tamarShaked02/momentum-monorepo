@@ -41,6 +41,7 @@ interface OnboardingRecommendationResponse {
   recommended_modules: Array<{ id: string; reason: string }>;
   summary: string;
   businessType: string;
+  mode?: string;
 }
 
 type OnboardingResponse =

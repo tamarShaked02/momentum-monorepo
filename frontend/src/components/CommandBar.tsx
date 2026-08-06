@@ -23,7 +23,8 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
   const [command, setCommand] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{
-    action: string;
+    success: boolean;
+    type: string;
     message?: string;
   } | null>(null);
   const [showResult, setShowResult] = useState(false);
@@ -43,7 +44,7 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
       setShowResult(true);
       setCommand("");
     } catch {
-      setResult({ action: "error", message: "Failed to process command." });
+      setResult({ success: false, type: "error", message: "Failed to process command." });
       setShowResult(true);
     } finally {
       setLoading(false);
@@ -52,9 +53,9 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
 
   const getResultMessage = () => {
     if (!result) return "";
-    if (result.action === "unknown" || result.action === "error")
+    if (result.type === "unknown" || result.type === "error" || !result.success)
       return result.message || "Something went wrong.";
-    return `✅ Action: ${result.action.replace(/_/g, " ")}`;
+    return `✅ ${result.message || "Action completed successfully"}`;
   };
 
   return (
@@ -134,7 +135,7 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
         <Alert
           onClose={() => setShowResult(false)}
           severity={
-            result?.action === "error" || result?.action === "unknown"
+            result?.type === "error" || result?.type === "unknown" || !result?.success
               ? "warning"
               : "success"
           }
