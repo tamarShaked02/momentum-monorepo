@@ -202,7 +202,7 @@ const MarketingPage: React.FC = () => {
                     <Typography variant="h3" sx={{ mb: 1 }}>
                       {g.emoji}
                     </Typography>
-                    <Typography variant="h6" fontWeight={600}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       {g.label}
                     </Typography>
                   </Card>
@@ -222,7 +222,7 @@ const MarketingPage: React.FC = () => {
                     }}
                   >
                     <AutoAwesome sx={{ color: "#4FC3F7" }} />
-                    <Typography variant="h6" fontWeight={600}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       Describe Your Campaign
                     </Typography>
                   </Box>
@@ -300,7 +300,7 @@ const MarketingPage: React.FC = () => {
                           }}
                         >
                           <Sms sx={{ color: "#FFB74D" }} />
-                          <Typography variant="h6" fontWeight={600}>
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
                             SMS
                           </Typography>
                         </Box>
@@ -330,7 +330,7 @@ const MarketingPage: React.FC = () => {
                           }}
                         >
                           <Email sx={{ color: "#4FC3F7" }} />
-                          <Typography variant="h6" fontWeight={600}>
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
                             Email
                           </Typography>
                         </Box>
@@ -376,7 +376,7 @@ const MarketingPage: React.FC = () => {
                           }}
                         >
                           <Share sx={{ color: "#BA68C8" }} />
-                          <Typography variant="h6" fontWeight={600}>
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
                             Social Media
                           </Typography>
                         </Box>
@@ -581,8 +581,7 @@ const MarketingPage: React.FC = () => {
                             <Box sx={{ mb: 1 }}>
                               <Typography
                                 variant="caption"
-                                color="#FFB74D"
-                                fontWeight={600}
+                                sx={{ color: "#FFB74D", fontWeight: 600 }}
                               >
                                 SMS
                               </Typography>
@@ -604,8 +603,7 @@ const MarketingPage: React.FC = () => {
                             <Box sx={{ mb: 1 }}>
                               <Typography
                                 variant="caption"
-                                color="#4FC3F7"
-                                fontWeight={600}
+                                sx={{ color: "#4FC3F7", fontWeight: 600 }}
                               >
                                 EMAIL
                               </Typography>
@@ -627,8 +625,7 @@ const MarketingPage: React.FC = () => {
                             <Box>
                               <Typography
                                 variant="caption"
-                                color="#BA68C8"
-                                fontWeight={600}
+                                sx={{ color: "#BA68C8", fontWeight: 600 }}
                               >
                                 SOCIAL
                               </Typography>
