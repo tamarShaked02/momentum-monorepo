@@ -20,8 +20,7 @@ export const Logo: React.FC<LogoProps> = ({
         variant={variant}
         className={className}
         sx={{
-          fontWeight: 800,
-          fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          fontWeight: 700,
           background: 'linear-gradient(135deg, #4FC3F7, #FFB74D)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',

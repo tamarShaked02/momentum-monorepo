@@ -41,17 +41,6 @@ textarea {
     sans-serif;
 }
 
-.logo,
-.logo * {
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif !important;
-}
-
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
