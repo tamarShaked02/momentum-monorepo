@@ -3,7 +3,7 @@ import React, {
   useContext,
   useState,
   useMemo,
-  ReactNode,
+  type ReactNode,
 } from "react";
 import {
   createTheme,
@@ -20,7 +20,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType>({
   mode: "dark",
-  toggleMode: () => {},
+  toggleMode: () => { },
 });
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -45,7 +45,7 @@ const buildTheme = (mode: Mode) =>
       },
     },
     typography: {
-      fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+      fontFamily: '"Poppins", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
       h4: { fontWeight: 700 },
       h5: { fontWeight: 600 },
       h6: { fontWeight: 600 },

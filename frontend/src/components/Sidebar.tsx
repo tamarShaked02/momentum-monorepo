@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import Logo from "./Logo";
 import {
   Drawer,
   List,
@@ -24,7 +25,6 @@ import {
   Campaign,
   BarChart,
   Logout,
-  AutoAwesome,
   LightMode,
   DarkMode,
   Settings,
@@ -111,18 +111,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <Box
         sx={{ px: 3, pb: 2, display: "flex", alignItems: "center", gap: 1.5 }}
       >
-        <AutoAwesome sx={{ color: "#4FC3F7", fontSize: 28 }} />
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: 800,
-            background: "linear-gradient(135deg, #4FC3F7, #FFB74D)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}
-        >
-          Momentum
-        </Typography>
+        <Logo iconSize={28} variant="h5" />
         <Tooltip
           title={mode === "dark" ? "Light mode" : "Dark mode"}
           placement="right"

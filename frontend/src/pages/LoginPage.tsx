@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { Box, Card, CardContent, TextField, Button, Typography, Link, Alert, InputAdornment, IconButton } from '@mui/material';
-import { Visibility, VisibilityOff, AutoAwesome } from '@mui/icons-material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import Logo from '../components/Logo';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -32,12 +33,9 @@ const LoginPage: React.FC = () => {
       <Card sx={{ maxWidth: 440, width: '100%', p: { xs: 2, sm: 3 } }}>
         <CardContent>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, justifyContent: 'center' }}>
-            <AutoAwesome sx={{ color: '#4FC3F7', fontSize: 32 }} />
-            <Typography variant="h4" sx={{ fontWeight: 800, background: 'linear-gradient(135deg, #4FC3F7, #FFB74D)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Momentum
-            </Typography>
+            <Logo iconSize={32} variant="h4" />
           </Box>
-          <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mb: 4 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mb: 4 }}>
             Welcome back! Sign in to manage your business.
           </Typography>
 
@@ -46,14 +44,16 @@ const LoginPage: React.FC = () => {
           <Box component="form" onSubmit={handleSubmit}>
             <TextField fullWidth label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} sx={{ mb: 2.5 }} required autoFocus />
             <TextField fullWidth label="Password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} sx={{ mb: 3 }} required
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" sx={{ color: 'text.secondary' }}>
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" sx={{ color: 'text.secondary' }}>
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
               }}
             />
             <Button fullWidth variant="contained" type="submit" disabled={loading} size="large" sx={{ mb: 2, py: 1.5 }}>
@@ -61,7 +61,7 @@ const LoginPage: React.FC = () => {
             </Button>
           </Box>
 
-          <Typography variant="body2" textAlign="center" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
             Don't have an account?{' '}
             <Link component={RouterLink} to="/register" sx={{ color: '#4FC3F7', textDecoration: 'none', fontWeight: 600 }}>Create one</Link>
           </Typography>

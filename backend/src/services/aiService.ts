@@ -257,7 +257,7 @@ const callGemini = async (
   const genAI = getClient();
   if (!genAI) throw new Error("AI client not available");
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
   const fullPrompt = `${systemPrompt}\n\nUSER INPUT: "${userPrompt}"`;
   const result = await model.generateContent(fullPrompt);
   const response = result.response;
@@ -275,7 +275,7 @@ const callGeminiWithHistory = async (
   const genAI = getClient();
   if (!genAI) throw new Error("AI client not available");
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
   const conversationText = history
     .map((m) => `${m.role === "user" ? "USER" : "ASSISTANT"}: ${m.content}`)
@@ -372,7 +372,7 @@ const callGeminiWithTimeout = async (
   const genAI = getClient();
   if (!genAI) return null;
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
   const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
 
   const timeoutPromise = new Promise<never>((_, reject) =>
