@@ -681,51 +681,31 @@ const DealDetailPanel: React.FC<DealDetailPanelProps> = ({
                   >
                     <Lightbulb
                       sx={{
-                        color:
-                          suggestion.priority === "high"
-                            ? "error.main"
-                            : suggestion.priority === "medium"
-                              ? "warning.main"
-                              : "info.main",
+                        color: "primary.main",
                         fontSize: 22,
                         mt: 0.25,
                       }}
                     />
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          mb: 0.5,
-                        }}
-                      >
+                      {suggestion.suggestion && (
+                        <Chip
+                          label={suggestion.suggestion
+                            .replace(/_/g, " ")
+                            .replace(/\b\w/g, (c) => c.toUpperCase())}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                          sx={{ mb: 0.5 }}
+                        />
+                      )}
+                      {suggestion.reasoning && (
                         <Typography
                           variant="body2"
-                          sx={{ fontWeight: 600, color: "text.primary" }}
+                          sx={{ color: "text.secondary", mt: 0.5 }}
                         >
-                          {suggestion.title}
+                          {suggestion.reasoning}
                         </Typography>
-                        <Chip
-                          label={suggestion.priority}
-                          size="small"
-                          color={
-                            suggestion.priority === "high"
-                              ? "error"
-                              : suggestion.priority === "medium"
-                                ? "warning"
-                                : "info"
-                          }
-                          sx={{ height: 18, fontSize: "0.65rem" }}
-                          variant="outlined"
-                        />
-                      </Box>
-                      <Typography
-                        variant="body2"
-                        sx={{ color: "text.secondary" }}
-                      >
-                        {suggestion.description}
-                      </Typography>
+                      )}
                     </Box>
                   </Box>
                 </Paper>

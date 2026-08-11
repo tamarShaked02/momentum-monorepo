@@ -42,6 +42,7 @@ function groupByGranularity(
   endDate: string,
   granularity: Granularity,
 ) {
+  const safeAppointments = Array.isArray(appointments) ? appointments : [];
   const start = new Date(startDate);
   const end = new Date(endDate);
   const buckets: {
@@ -115,7 +116,7 @@ function groupByGranularity(
     }
   }
 
-  for (const apt of appointments) {
+  for (const apt of safeAppointments) {
     const aptDate = apt.startTime?.split("T")[0];
     if (!aptDate || aptDate < startDate || aptDate > endDate) continue;
     for (const bucket of buckets) {
@@ -136,7 +137,7 @@ function groupByGranularity(
 const AnalyticsPage: React.FC = () => {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [inventoryCost, setInventoryCost] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   const today = new Date();
   const monthAgo = new Date(today);
@@ -154,14 +155,16 @@ const AnalyticsPage: React.FC = () => {
     api
       .get("/appointments")
       .then((res) => {
-        setAppointments(res.data);
+        const list = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        setAppointments(list);
         setLoading(false);
       })
       .catch(() => setLoading(false));
     api
       .get("/inventory")
       .then((res) => {
-        const total = res.data.reduce(
+        const items = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        const total = items.reduce(
           (sum: number, item: any) =>
             sum + (item.price || 0) * (item.quantity || 0),
           0,
@@ -385,17 +388,6 @@ const AnalyticsPage: React.FC = () => {
                       fill="rgba(102,187,106,0.15)"
                       strokeWidth={2}
                       name="Revenue"
-                      cursor={granularity !== "day" ? "pointer" : "default"}
-                      onClick={(_data: any, idx: number) => {
-                        if (granularity !== "day" && chartData[idx]) {
-                          setDrillStack((prev) => [
-                            ...prev,
-                            { start: startDate, end: endDate },
-                          ]);
-                          setStartDate(chartData[idx].from);
-                          setEndDate(chartData[idx].to);
-                        }
-                      }}
                     />
                     <Area
                       type="monotone"
@@ -443,34 +435,12 @@ const AnalyticsPage: React.FC = () => {
                       fill="#4FC3F7"
                       radius={[4, 4, 0, 0]}
                       name="Scheduled"
-                      cursor={granularity !== "day" ? "pointer" : "default"}
-                      onClick={(_data: any, idx: number) => {
-                        if (granularity !== "day" && chartData[idx]) {
-                          setDrillStack((prev) => [
-                            ...prev,
-                            { start: startDate, end: endDate },
-                          ]);
-                          setStartDate(chartData[idx].from);
-                          setEndDate(chartData[idx].to);
-                        }
-                      }}
                     />
                     <Bar
                       dataKey="completed"
                       fill="#66BB6A"
                       radius={[4, 4, 0, 0]}
                       name="Completed"
-                      cursor={granularity !== "day" ? "pointer" : "default"}
-                      onClick={(_data: any, idx: number) => {
-                        if (granularity !== "day" && chartData[idx]) {
-                          setDrillStack((prev) => [
-                            ...prev,
-                            { start: startDate, end: endDate },
-                          ]);
-                          setStartDate(chartData[idx].from);
-                          setEndDate(chartData[idx].to);
-                        }
-                      }}
                     />
                   </ReBarChart>
                 </ResponsiveContainer>

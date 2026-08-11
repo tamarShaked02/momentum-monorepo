@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import {
   Close,
+  Edit,
   Email,
   Phone,
   Work,
@@ -94,6 +95,7 @@ export interface ContactProfileDrawerProps {
   open: boolean;
   contactId: string | null;
   onClose: () => void;
+  onEditContact?: (contact: Contact) => void;
   onCreateAppointment?: (contactId: string) => void;
   onCreateTask?: (contactId: string) => void;
 }
@@ -162,6 +164,7 @@ const ContactProfileDrawer: React.FC<ContactProfileDrawerProps> = ({
   open,
   contactId,
   onClose,
+  onEditContact,
   onCreateAppointment,
   onCreateTask,
 }) => {
@@ -369,6 +372,16 @@ const ContactProfileDrawer: React.FC<ContactProfileDrawerProps> = ({
                 }}
               />
             </Box>
+            {onEditContact && (
+              <IconButton
+                onClick={() => onEditContact(contact)}
+                size="small"
+                aria-label="Edit contact"
+                sx={{ color: "text.secondary" }}
+              >
+                <Edit />
+              </IconButton>
+            )}
             <IconButton
               onClick={onClose}
               size="small"

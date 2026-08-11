@@ -31,7 +31,7 @@ import IntegrationCard from "../components/settings/IntegrationCard";
 const SettingsPage: React.FC = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { showSuccess, showError } = useSnackbar();
   const navigate = useNavigate();
 
@@ -107,6 +107,7 @@ const SettingsPage: React.FC = () => {
     setProfileSaving(true);
     try {
       await api.put("/auth/profile", { businessName, phone });
+      await refreshUser();
       showSuccess("Profile updated");
     } catch {
       showError("Failed to update profile");
@@ -315,7 +316,10 @@ const SettingsPage: React.FC = () => {
                 </Box>
                 <Switch
                   checked={emailNotifications}
-                  onChange={(_, v) => setEmailNotifications(v)}
+                  onChange={(_, v) => {
+                    setEmailNotifications(v);
+                    console.warn("Feature not yet implemented in backend");
+                  }}
                   color="primary"
                 />
               </Box>
@@ -342,7 +346,10 @@ const SettingsPage: React.FC = () => {
                 </Box>
                 <Switch
                   checked={appointmentReminders}
-                  onChange={(_, v) => setAppointmentReminders(v)}
+                  onChange={(_, v) => {
+                    setAppointmentReminders(v);
+                    console.warn("Feature not yet implemented in backend");
+                  }}
                   color="primary"
                 />
               </Box>
@@ -369,7 +376,10 @@ const SettingsPage: React.FC = () => {
                 </Box>
                 <Switch
                   checked={syncAlerts}
-                  onChange={(_, v) => setSyncAlerts(v)}
+                  onChange={(_, v) => {
+                    setSyncAlerts(v);
+                    console.warn("Feature not yet implemented in backend");
+                  }}
                   color="primary"
                 />
               </Box>

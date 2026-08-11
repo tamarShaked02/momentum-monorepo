@@ -184,6 +184,32 @@ const AppointmentsPage: React.FC = () => {
     extendedProps: { appointment: appt },
   }));
 
+  const openAppointmentDetails = useCallback(
+    (appointment: Appointment, targetEl?: HTMLElement) => {
+      const isExternal = appointment.source === "google_calendar";
+
+      if (isExternal) {
+        setPopoverAppointment(appointment);
+        if (targetEl) setPopoverAnchorEl(targetEl);
+      } else {
+        setDialogMode("edit");
+        setDialogInitialData({
+          title: appointment.title,
+          customerId: appointment.customerId ?? null,
+          startTime: formatDateTimeLocal(new Date(appointment.startTime)),
+          endTime: formatDateTimeLocal(new Date(appointment.endTime)),
+          status: appointment.status,
+          source: appointment.source,
+          price: appointment.price,
+          notes: appointment.notes,
+        });
+        setEditingAppointmentId(appointment.id);
+        setDialogOpen(true);
+      }
+    },
+    [],
+  );
+
   // Custom event content renderer
   const renderEventContent = (eventInfo: EventContentArg) => {
     const appointment = eventInfo.event.extendedProps?.appointment as
@@ -196,7 +222,7 @@ const AppointmentsPage: React.FC = () => {
         appointment={appointment}
         isExternal={isExternal}
         isDraggable={!isExternal}
-        onClick={() => {}}
+        onClick={(appt) => openAppointmentDetails(appt)}
       />
     );
   };

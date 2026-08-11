@@ -257,6 +257,7 @@ const CRMPage: React.FC = () => {
           open={drawerOpen}
           contactId={selectedContactId}
           onClose={handleDrawerClose}
+          onEditContact={handleEditContact}
           onCreateTask={async (contactId) => {
             const title = prompt("Task title:");
             if (!title) return;
@@ -289,10 +290,11 @@ const CRMPage: React.FC = () => {
         <Dialog
           open={dialogOpen}
           onClose={() => setDialogOpen(false)}
+          aria-labelledby="contact-dialog-title"
           maxWidth="sm"
           fullWidth
         >
-          <DialogTitle>
+          <DialogTitle id="contact-dialog-title">
             {editingContactId ? "Edit Contact" : "Add Contact"}
           </DialogTitle>
           <DialogContent
@@ -355,8 +357,9 @@ const CRMPage: React.FC = () => {
                 size="small"
               />
               <FormControl fullWidth size="small">
-                <InputLabel>Lifecycle Stage</InputLabel>
+                <InputLabel id="lifecycle-stage-label">Lifecycle Stage</InputLabel>
                 <Select
+                  labelId="lifecycle-stage-label"
                   value={form.lifecycleStage}
                   label="Lifecycle Stage"
                   onChange={(e) =>

@@ -12,7 +12,7 @@ import {
   useTheme,
   Chip,
 } from "@mui/material";
-import { Menu as MenuIcon, AutoAwesome, Close } from "@mui/icons-material";
+import { Menu as MenuIcon, AutoAwesome } from "@mui/icons-material";
 import api from "../api/client";
 
 interface CommandBarProps {
@@ -38,8 +38,6 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
     setLoading(true);
     try {
       const res = await api.post("/ai/command", { command: command.trim() });
-      console.log("", res.data);
-
       setResult(res.data);
       setShowResult(true);
       setCommand("");
