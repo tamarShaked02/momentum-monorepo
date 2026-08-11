@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import DatePickerInput from "../calendar/DatePickerInput";
 import {
   Box,
   Card,
@@ -147,24 +148,22 @@ const DashboardTab: React.FC = () => {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {/* Date Range Filter */}
       <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-        <TextField
-          label="Start Date"
-          type="date"
-          size="small"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          slotProps={{ inputLabel: { shrink: true } }}
-          sx={{ width: 170 }}
-        />
-        <TextField
-          label="End Date"
-          type="date"
-          size="small"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          slotProps={{ inputLabel: { shrink: true } }}
-          sx={{ width: 170 }}
-        />
+        <Box sx={{ width: 170 }}>
+          <DatePickerInput
+            label="Start Date"
+            value={startDate}
+            onChange={setStartDate}
+            type="date"
+          />
+        </Box>
+        <Box sx={{ width: 170 }}>
+          <DatePickerInput
+            label="End Date"
+            value={endDate}
+            onChange={setEndDate}
+            type="date"
+          />
+        </Box>
         {loading && <CircularProgress size={20} />}
       </Box>
 

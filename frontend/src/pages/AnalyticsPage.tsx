@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import DatePickerInput from "../components/calendar/DatePickerInput";
 import {
   Box,
   Typography,
@@ -254,40 +255,26 @@ const AnalyticsPage: React.FC = () => {
             />
           </Box>
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mb: 0.5 }}
-              >
-                From
-              </Typography>
-              <TextField
-                type="date"
-                size="small"
+            <Box sx={{ width: 160 }}>
+              <DatePickerInput
+                label="From"
                 value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
+                onChange={(val) => {
+                  setStartDate(val);
                   setDrillStack([]);
                 }}
+                type="date"
               />
             </Box>
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mb: 0.5 }}
-              >
-                To
-              </Typography>
-              <TextField
-                type="date"
-                size="small"
+            <Box sx={{ width: 160 }}>
+              <DatePickerInput
+                label="To"
                 value={endDate}
-                onChange={(e) => {
-                  setEndDate(e.target.value);
+                onChange={(val) => {
+                  setEndDate(val);
                   setDrillStack([]);
                 }}
+                type="date"
               />
             </Box>
           </Box>

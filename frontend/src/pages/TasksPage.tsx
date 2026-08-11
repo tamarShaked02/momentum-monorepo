@@ -15,7 +15,7 @@ import {
   Fade,
   IconButton,
 } from "@mui/material";
-import { Add, CheckCircle, Delete } from "@mui/icons-material";
+import DatePickerInput from "../components/calendar/DatePickerInput";
 import {
   DndContext,
   DragOverlay,
@@ -473,21 +473,13 @@ const TasksPage: React.FC = () => {
                 placeholder="e.g., operational"
               />
             </Box>
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ mb: 0.5, display: "block", pl: 0.5 }}
-              >
-                Due Date
-              </Typography>
-              <TextField
-                type="date"
+              <DatePickerInput
+                label="Due Date"
                 value={form.dueDate}
-                onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                onChange={(val) => setForm({ ...form, dueDate: val })}
+                type="date"
                 fullWidth
               />
-            </Box>
           </DialogContent>
           <DialogActions sx={{ p: 3 }}>
             <Button onClick={() => setDialogOpen(false)}>Cancel</Button>

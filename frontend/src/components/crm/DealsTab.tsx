@@ -17,6 +17,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { ViewKanban, TableChart, Add as AddIcon } from "@mui/icons-material";
+import DatePickerInput from "../calendar/DatePickerInput";
 import {
   DataGrid,
   type GridColDef,
@@ -448,28 +449,26 @@ const DealsTab: React.FC = () => {
       {/* Kanban-specific: date range filters */}
       {viewMode === "kanban" && (
         <>
-          <TextField
-            label="Close From"
-            size="small"
-            type="date"
-            value={filters.expectedCloseDateFrom}
-            onChange={(e) =>
-              handleFilterChange("expectedCloseDateFrom", e.target.value)
-            }
-            sx={{ width: 160 }}
-            slotProps={{ inputLabel: { shrink: true } }}
-          />
-          <TextField
-            label="Close To"
-            size="small"
-            type="date"
-            value={filters.expectedCloseDateTo}
-            onChange={(e) =>
-              handleFilterChange("expectedCloseDateTo", e.target.value)
-            }
-            sx={{ width: 160 }}
-            slotProps={{ inputLabel: { shrink: true } }}
-          />
+          <Box sx={{ width: 160 }}>
+            <DatePickerInput
+              label="Close From"
+              value={filters.expectedCloseDateFrom}
+              onChange={(val) =>
+                handleFilterChange("expectedCloseDateFrom", val)
+              }
+              type="date"
+            />
+          </Box>
+          <Box sx={{ width: 160 }}>
+            <DatePickerInput
+              label="Close To"
+              value={filters.expectedCloseDateTo}
+              onChange={(val) =>
+                handleFilterChange("expectedCloseDateTo", val)
+              }
+              type="date"
+            />
+          </Box>
         </>
       )}
     </Box>
@@ -741,16 +740,14 @@ const DealsTab: React.FC = () => {
               }}
             />
           </Box>
-          <TextField
+          <DatePickerInput
             label="Expected Close Date"
-            type="date"
             value={dealForm.expectedCloseDate}
-            onChange={(e) =>
-              setDealForm({ ...dealForm, expectedCloseDate: e.target.value })
+            onChange={(val) =>
+              setDealForm({ ...dealForm, expectedCloseDate: val })
             }
-            size="small"
+            type="date"
             fullWidth
-            slotProps={{ inputLabel: { shrink: true } }}
           />
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
