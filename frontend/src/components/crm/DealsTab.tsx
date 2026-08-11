@@ -15,6 +15,7 @@ import {
   TextField,
   Typography,
   CircularProgress,
+  Autocomplete,
 } from "@mui/material";
 import { ViewKanban, TableChart, Add as AddIcon } from "@mui/icons-material";
 import DatePickerInput from "../calendar/DatePickerInput";
@@ -28,6 +29,7 @@ import {
   getPipelines,
   createDeal,
   moveDealToStage,
+  getContacts,
 } from "../../api/crm";
 import type {
   Deal,
@@ -35,7 +37,9 @@ import type {
   DealCreateData,
   Pipeline,
   Stage,
+  Contact,
 } from "../../types/crm";
+import { useSnackbar } from "../../contexts/SnackbarContext";
 import KanbanBoard from "./KanbanBoard";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -93,6 +97,8 @@ function getPersistedFilters(): DealFilters {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const DealsTab: React.FC = () => {
+  const { showSuccess, showError } = useSnackbar();
+
   // View mode
   const [viewMode, setViewMode] = useState<ViewMode>(getPersistedView);
 
@@ -102,6 +108,7 @@ const DealsTab: React.FC = () => {
   // Data state
   const [deals, setDeals] = useState<Deal[]>([]);
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [totalDeals, setTotalDeals] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -132,19 +139,25 @@ const DealsTab: React.FC = () => {
     }
   }, [filters]);
 
-  // ─── Load pipelines ──────────────────────────────────────────────────
+  // ─── Load pipelines & contacts ───────────────────────────────────────
 
   useEffect(() => {
     let cancelled = false;
-    async function loadPipelines() {
+    async function loadInitialData() {
       try {
-        const data = await getPipelines();
-        if (!cancelled) setPipelines(data);
-      } catch {
-        // silent — pipelines list may be empty
+        const [pipelinesData, contactsData] = await Promise.all([
+          getPipelines(),
+          getContacts({ pageSize: 500 }).catch(() => ({ data: [] })),
+        ]);
+        if (!cancelled) {
+          setPipelines(pipelinesData);
+          setContacts(contactsData.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to load initial pipelines or contacts:", err);
       }
     }
-    loadPipelines();
+    loadInitialData();
     return () => {
       cancelled = true;
     };
@@ -244,10 +257,21 @@ const DealsTab: React.FC = () => {
       !dealForm.contactId ||
       !dealForm.pipelineId ||
       !dealForm.stageId
-    )
+    ) {
+      console.warn("Create Deal failed validation: Missing required fields", dealForm);
+      showError("Please fill in all required fields (Title, Contact, Pipeline, Stage)");
       return;
+    }
     setDealSaving(true);
     try {
+      let formattedCloseDate: string | undefined = undefined;
+      if (dealForm.expectedCloseDate) {
+        const parsedDate = new Date(dealForm.expectedCloseDate);
+        if (!isNaN(parsedDate.getTime())) {
+          formattedCloseDate = parsedDate.toISOString();
+        }
+      }
+
       const data: DealCreateData = {
         title: dealForm.title.trim(),
         contactId: dealForm.contactId,
@@ -257,9 +281,12 @@ const DealsTab: React.FC = () => {
         winProbability: dealForm.winProbability
           ? Number(dealForm.winProbability)
           : undefined,
-        expectedCloseDate: dealForm.expectedCloseDate || undefined,
+        expectedCloseDate: formattedCloseDate,
       };
+
+      console.log("Submitting Create Deal payload:", data);
       await createDeal(data);
+      showSuccess("Deal created successfully");
       setCreateDialogOpen(false);
       setDealForm({
         title: "",
@@ -271,8 +298,10 @@ const DealsTab: React.FC = () => {
         expectedCloseDate: "",
       });
       await fetchDeals();
-    } catch (error) {
-      console.error("Failed to create deal:", error);
+    } catch (error: any) {
+      const serverMsg = error?.response?.data?.error || error?.message || "Failed to create deal";
+      console.error("Failed to create deal:", error, "Server Response:", error?.response?.data);
+      showError(serverMsg);
     } finally {
       setDealSaving(false);
     }
@@ -649,16 +678,31 @@ const DealsTab: React.FC = () => {
             size="small"
             fullWidth
           />
-          <TextField
-            label="Contact ID"
-            value={dealForm.contactId}
-            onChange={(e) =>
-              setDealForm({ ...dealForm, contactId: e.target.value })
+          <Autocomplete
+            options={contacts}
+            getOptionLabel={(option) =>
+              typeof option === "string"
+                ? option
+                : `${option.name}${option.company ? ` (${option.company})` : ""}`
             }
-            required
-            size="small"
+            value={contacts.find((c) => c.id === dealForm.contactId) || null}
+            onChange={(_e, newValue) => {
+              setDealForm({
+                ...dealForm,
+                contactId: newValue ? newValue.id : "",
+              });
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Contact *"
+                placeholder="Select contact"
+                size="small"
+                required
+              />
+            )}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
             fullWidth
-            placeholder="Paste contact ID"
           />
           <Box sx={{ display: "flex", gap: 2 }}>
             <FormControl fullWidth size="small" required>
