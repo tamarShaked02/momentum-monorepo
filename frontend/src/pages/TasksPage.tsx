@@ -16,6 +16,7 @@ import {
   IconButton,
 } from "@mui/material";
 import DatePickerInput from "../components/calendar/DatePickerInput";
+import { Add, CheckCircle, Delete } from "@mui/icons-material";
 import {
   DndContext,
   DragOverlay,

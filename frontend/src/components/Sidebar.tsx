@@ -150,7 +150,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             "M"}
         </Avatar>
         <Box sx={{ overflow: "hidden", flex: 1 }}>
-          <Typography variant="body2" fontWeight={600} noWrap>
+          <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
             {user?.businessName || "My Business"}
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap>

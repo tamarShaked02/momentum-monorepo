@@ -246,7 +246,7 @@ const OnboardingPage: React.FC = () => {
             }}
           >
             <AutoAwesome sx={{ color: "#4FC3F7" }} />
-            <Typography variant="h5" fontWeight={700}>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
               {isReturning ? "Reconfigure Modules" : "Momentum Setup"}
             </Typography>
           </Box>
@@ -356,8 +356,7 @@ const OnboardingPage: React.FC = () => {
               <CardContent>
                 <Typography
                   variant="h6"
-                  fontWeight={600}
-                  sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
+                  sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1, fontWeight: 600 }}
                 >
                   <CheckCircle sx={{ color: "#66BB6A" }} /> Recommended Modules
                 </Typography>
