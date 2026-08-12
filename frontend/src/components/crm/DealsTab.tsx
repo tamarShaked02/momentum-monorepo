@@ -316,14 +316,28 @@ const DealsTab: React.FC = () => {
         headerName: "Title",
         flex: 1.5,
         minWidth: 180,
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }} noWrap>
+              {params.value}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "value",
         headerName: "Value",
         width: 120,
         type: "number",
-        valueFormatter: (value: number | null) =>
-          value != null ? `$${value.toLocaleString()}` : "—",
+        headerAlign: "left",
+        align: "left",
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2">
+              {params.value != null ? `$${Number(params.value).toLocaleString()}` : "—"}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "contact",
@@ -331,36 +345,66 @@ const DealsTab: React.FC = () => {
         flex: 1,
         minWidth: 140,
         sortable: false,
-        valueGetter: (_value: unknown, row: Deal) => row.contact?.name ?? "—",
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" sx={{ color: "text.secondary" }} noWrap>
+              {params.row.contact?.name ?? "—"}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "stage",
         headerName: "Stage",
         width: 140,
         sortable: false,
-        valueGetter: (_value: unknown, row: Deal) => row.stage?.name ?? "—",
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" noWrap>
+              {params.row.stage?.name ?? "—"}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "pipeline",
         headerName: "Pipeline",
         width: 140,
         sortable: false,
-        valueGetter: (_value: unknown, row: Deal) => row.pipeline?.name ?? "—",
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" sx={{ color: "text.secondary" }} noWrap>
+              {params.row.pipeline?.name ?? "—"}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "winProbability",
         headerName: "Win %",
         width: 90,
         type: "number",
-        valueFormatter: (value: number | null) =>
-          value != null ? `${value}%` : "—",
+        headerAlign: "left",
+        align: "left",
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2">
+              {params.value != null ? `${params.value}%` : "—"}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "expectedCloseDate",
         headerName: "Expected Close",
         width: 140,
-        valueFormatter: (value: string | null) =>
-          value ? new Date(value).toLocaleDateString() : "—",
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              {params.value ? new Date(params.value).toLocaleDateString() : "—"}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "status",
@@ -373,16 +417,18 @@ const DealsTab: React.FC = () => {
             lost: "error.main",
           };
           return (
-            <Typography
-              variant="caption"
-              sx={{
-                color: colorMap[params.value] ?? "text.secondary",
-                fontWeight: 600,
-                textTransform: "capitalize",
-              }}
-            >
-              {params.value}
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: colorMap[params.value] ?? "text.secondary",
+                  fontWeight: 600,
+                  textTransform: "capitalize",
+                }}
+              >
+                {params.value}
+              </Typography>
+            </Box>
           );
         },
       },

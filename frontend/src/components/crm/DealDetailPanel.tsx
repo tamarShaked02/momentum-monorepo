@@ -400,56 +400,56 @@ const DealDetailPanel: React.FC<DealDetailPanelProps> = ({
                       <TableHead>
                         <TableRow>
                           <TableCell
-                            sx={{ color: "text.secondary", fontWeight: 600 }}
+                            sx={{ color: "text.secondary", fontWeight: 600, verticalAlign: "middle" }}
                           >
                             Item
                           </TableCell>
                           <TableCell
                             align="right"
-                            sx={{ color: "text.secondary", fontWeight: 600 }}
+                            sx={{ color: "text.secondary", fontWeight: 600, verticalAlign: "middle" }}
                           >
                             Qty
                           </TableCell>
                           <TableCell
                             align="right"
-                            sx={{ color: "text.secondary", fontWeight: 600 }}
+                            sx={{ color: "text.secondary", fontWeight: 600, verticalAlign: "middle" }}
                           >
                             Unit Price
                           </TableCell>
                           <TableCell
                             align="right"
-                            sx={{ color: "text.secondary", fontWeight: 600 }}
+                            sx={{ color: "text.secondary", fontWeight: 600, verticalAlign: "middle" }}
                           >
                             Total
                           </TableCell>
-                          <TableCell align="right" sx={{ width: 72 }} />
+                          <TableCell align="right" sx={{ width: 72, verticalAlign: "middle" }} />
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {deal.items.map((item) => (
                           <TableRow key={item.id}>
-                            <TableCell sx={{ color: "text.primary" }}>
+                            <TableCell sx={{ color: "text.primary", verticalAlign: "middle" }}>
                               {item.inventoryItem?.name || "Unknown Item"}
                             </TableCell>
                             <TableCell
                               align="right"
-                              sx={{ color: "text.primary" }}
+                              sx={{ color: "text.primary", verticalAlign: "middle" }}
                             >
                               {item.quantity}
                             </TableCell>
                             <TableCell
                               align="right"
-                              sx={{ color: "text.primary" }}
+                              sx={{ color: "text.primary", verticalAlign: "middle" }}
                             >
                               {formatCurrency(item.unitPrice)}
                             </TableCell>
                             <TableCell
                               align="right"
-                              sx={{ color: "text.primary", fontWeight: 500 }}
+                              sx={{ color: "text.primary", fontWeight: 500, verticalAlign: "middle" }}
                             >
                               {formatCurrency(item.quantity * item.unitPrice)}
                             </TableCell>
-                            <TableCell align="right">
+                            <TableCell align="right" sx={{ verticalAlign: "middle" }}>
                               <IconButton
                                 size="small"
                                 onClick={() => handleOpenEditItem(item)}

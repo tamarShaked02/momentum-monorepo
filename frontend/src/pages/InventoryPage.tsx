@@ -103,9 +103,43 @@ const InventoryPage: React.FC = () => {
   };
 
   const columns: GridColDef[] = [
-    { field: "name", headerName: "Product", flex: 1, minWidth: 140 },
-    { field: "sku", headerName: "SKU", width: 100 },
-    { field: "category", headerName: "Category", width: 120 },
+    {
+      field: "name",
+      headerName: "Product",
+      flex: 1,
+      minWidth: 140,
+      renderCell: (params: any) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
+            {params.value}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      field: "sku",
+      headerName: "SKU",
+      width: 100,
+      renderCell: (params: any) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            {params.value || "—"}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      field: "category",
+      headerName: "Category",
+      width: 120,
+      renderCell: (params: any) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Typography variant="body2">
+            {params.value || "—"}
+          </Typography>
+        </Box>
+      ),
+    },
     {
       field: "quantity",
       headerName: "Stock",
@@ -113,27 +147,45 @@ const InventoryPage: React.FC = () => {
       renderCell: (params: any) => {
         const isLow = params.row.quantity <= params.row.lowThreshold;
         return (
-          <Chip
-            label={params.value}
-            size="small"
-            sx={{
-              fontWeight: 700,
-              background: isLow
-                ? "rgba(255,107,107,0.2)"
-                : "rgba(102,187,106,0.15)",
-              color: isLow ? "#FF6B6B" : "#66BB6A",
-            }}
-          />
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Chip
+              label={params.value}
+              size="small"
+              sx={{
+                fontWeight: 700,
+                background: isLow
+                  ? "rgba(255,107,107,0.2)"
+                  : "rgba(102,187,106,0.15)",
+                color: isLow ? "#FF6B6B" : "#66BB6A",
+              }}
+            />
+          </Box>
         );
       },
     },
-    { field: "lowThreshold", headerName: "Min", width: 80 },
+    {
+      field: "lowThreshold",
+      headerName: "Min",
+      width: 80,
+      renderCell: (params: any) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            {params.value}
+          </Typography>
+        </Box>
+      ),
+    },
     {
       field: "price",
       headerName: "Price",
       width: 90,
-      valueFormatter: (value: any) =>
-        value ? `$${Number(value).toFixed(2)}` : "-",
+      renderCell: (params: any) => (
+        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+          <Typography variant="body2">
+            {params.value ? `$${Number(params.value).toFixed(2)}` : "-"}
+          </Typography>
+        </Box>
+      ),
     },
     {
       field: "actions",
@@ -141,7 +193,7 @@ const InventoryPage: React.FC = () => {
       width: 160,
       sortable: false,
       renderCell: (params: any) => (
-        <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
+        <Box sx={{ display: "flex", gap: 0.5, alignItems: "center", height: "100%" }}>
           <Button
             size="small"
             variant="outlined"
@@ -182,7 +234,7 @@ const InventoryPage: React.FC = () => {
       width: 100,
       sortable: false,
       renderCell: (params: any) => (
-        <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
+        <Box sx={{ display: "flex", gap: 0.5, alignItems: "center", height: "100%" }}>
           <IconButton
             size="small"
             onClick={(e) => {
