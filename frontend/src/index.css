@@ -140,7 +140,18 @@ td,
   padding: 0 16px !important;
 }
 
-.MuiDataGrid-cellContent {
-  display: inline-flex !important;
+.MuiDataGrid-columnHeaderCheckbox,
+.MuiDataGrid-cellCheckbox {
+  padding: 0 8px !important;
+  display: flex !important;
+  justify-content: center !important;
   align-items: center !important;
+}
+
+.MuiDataGrid-columnHeaderCheckbox .MuiDataGrid-columnHeaderTitleContainer,
+.MuiDataGrid-columnHeaderCheckbox .MuiDataGrid-columnHeaderTitleContainerContent {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
 }

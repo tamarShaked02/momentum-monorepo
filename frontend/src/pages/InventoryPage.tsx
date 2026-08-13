@@ -317,6 +317,18 @@ const InventoryPage: React.FC = () => {
               "& .MuiDataGrid-columnHeaders": {
                 background: "rgba(255,255,255,0.03)",
               },
+              "& .MuiDataGrid-columnHeaderCheckbox, & .MuiDataGrid-cellCheckbox": {
+                padding: "0 8px !important",
+                display: "flex !important",
+                justifyContent: "center !important",
+                alignItems: "center !important",
+              },
+              "& .MuiDataGrid-columnHeaderCheckbox .MuiDataGrid-columnHeaderTitleContainer, & .MuiDataGrid-columnHeaderCheckbox .MuiDataGrid-columnHeaderTitleContainerContent": {
+                display: "flex !important",
+                justifyContent: "center !important",
+                alignItems: "center !important",
+                width: "100% !important",
+              },
               "& .MuiDataGrid-row:hover": {
                 background: "rgba(79,195,247,0.04)",
               },
