@@ -53,7 +53,7 @@ const DragOverlayCard: React.FC<{ deal: Deal }> = ({ deal }) => {
     <Box
       sx={{
         p: 1.5,
-        borderRadius: 2,
+        borderRadius: 1,
         cursor: "grabbing",
         minWidth: 240,
         transform: "rotate(2deg)",
@@ -149,7 +149,7 @@ const StageColumn: React.FC<StageColumnProps> = ({
         maxWidth: 320,
         flex: "1 0 280px",
         height: "100%",
-        borderRadius: 2,
+        borderRadius: 1,
         backgroundColor: isOver
           ? isDark
             ? "rgba(79, 195, 247, 0.08)"
@@ -206,7 +206,7 @@ const StageColumn: React.FC<StageColumnProps> = ({
             backgroundColor: isDark
               ? "rgba(255,255,255,0.1)"
               : "rgba(0,0,0,0.1)",
-            borderRadius: 2,
+            borderRadius: 1,
           },
         }}
       >

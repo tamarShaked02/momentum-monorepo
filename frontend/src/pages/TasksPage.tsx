@@ -67,7 +67,7 @@ const TaskCard: React.FC<{
       {...attributes}
       {...listeners}
       sx={{
-        borderRadius: 2,
+        borderRadius: 1,
         cursor: "grab",
         flexShrink: 0,
         opacity: isDragging && !overlay ? 0.3 : 1,
@@ -203,7 +203,7 @@ const DroppableColumn: React.FC<{
         ref={setNodeRef}
         sx={{
           flex: 1,
-          borderRadius: 2,
+          borderRadius: 1,
           background: isOver
             ? "rgba(79,195,247,0.06)"
             : "rgba(255,255,255,0.02)",
