@@ -277,6 +277,15 @@ const TasksPage: React.FC = () => {
 
   useEffect(() => {
     fetchTasks();
+    const handleRefresh = () => fetchTasks();
+    window.addEventListener("ai_mutation_success", handleRefresh);
+    window.addEventListener("tasks-updated", handleRefresh);
+    window.addEventListener("data-updated", handleRefresh);
+    return () => {
+      window.removeEventListener("ai_mutation_success", handleRefresh);
+      window.removeEventListener("tasks-updated", handleRefresh);
+      window.removeEventListener("data-updated", handleRefresh);
+    };
   }, []);
 
   const handleCreate = async () => {

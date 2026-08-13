@@ -110,6 +110,15 @@ const ContactsTab: React.FC<ContactsTabProps> = ({
 
   useEffect(() => {
     fetchContacts();
+    const handleRefresh = () => fetchContacts();
+    window.addEventListener("ai_mutation_success", handleRefresh);
+    window.addEventListener("crm-updated", handleRefresh);
+    window.addEventListener("data-updated", handleRefresh);
+    return () => {
+      window.removeEventListener("ai_mutation_success", handleRefresh);
+      window.removeEventListener("crm-updated", handleRefresh);
+      window.removeEventListener("data-updated", handleRefresh);
+    };
   }, [fetchContacts]);
 
   // Debounce search input

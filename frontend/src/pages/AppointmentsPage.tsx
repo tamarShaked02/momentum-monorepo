@@ -126,6 +126,18 @@ const AppointmentsPage: React.FC = () => {
     }
   }, [fetchAppointments]);
 
+  useEffect(() => {
+    const handleRefresh = () => refetchCurrentRange();
+    window.addEventListener("ai_mutation_success", handleRefresh);
+    window.addEventListener("appointments-updated", handleRefresh);
+    window.addEventListener("data-updated", handleRefresh);
+    return () => {
+      window.removeEventListener("ai_mutation_success", handleRefresh);
+      window.removeEventListener("appointments-updated", handleRefresh);
+      window.removeEventListener("data-updated", handleRefresh);
+    };
+  }, [refetchCurrentRange]);
+
   // Auto-sync polling: every 60 seconds when connected
   useEffect(() => {
     if (!googleStatus?.connected) return;

@@ -207,6 +207,17 @@ const DealsTab: React.FC = () => {
 
   useEffect(() => {
     fetchDeals();
+    const handleRefresh = () => fetchDeals();
+    window.addEventListener("ai_mutation_success", handleRefresh);
+    window.addEventListener("crm-updated", handleRefresh);
+    window.addEventListener("deals-updated", handleRefresh);
+    window.addEventListener("data-updated", handleRefresh);
+    return () => {
+      window.removeEventListener("ai_mutation_success", handleRefresh);
+      window.removeEventListener("crm-updated", handleRefresh);
+      window.removeEventListener("deals-updated", handleRefresh);
+      window.removeEventListener("data-updated", handleRefresh);
+    };
   }, [fetchDeals]);
 
   // ─── Filter change handlers ──────────────────────────────────────────

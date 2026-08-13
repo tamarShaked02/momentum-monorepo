@@ -48,6 +48,15 @@ const InventoryPage: React.FC = () => {
   };
   useEffect(() => {
     fetchItems();
+    const handleRefresh = () => fetchItems();
+    window.addEventListener("ai_mutation_success", handleRefresh);
+    window.addEventListener("inventory-updated", handleRefresh);
+    window.addEventListener("data-updated", handleRefresh);
+    return () => {
+      window.removeEventListener("ai_mutation_success", handleRefresh);
+      window.removeEventListener("inventory-updated", handleRefresh);
+      window.removeEventListener("data-updated", handleRefresh);
+    };
   }, []);
 
   const handleSave = async () => {

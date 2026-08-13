@@ -28,7 +28,7 @@ const DashboardPage: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchSummary = React.useCallback(() => {
     api
       .get("/dashboard/summary")
       .then((res) => {
@@ -37,6 +37,17 @@ const DashboardPage: React.FC = () => {
       })
       .catch(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchSummary();
+    const handleRefresh = () => fetchSummary();
+    window.addEventListener("ai_mutation_success", handleRefresh);
+    window.addEventListener("data-updated", handleRefresh);
+    return () => {
+      window.removeEventListener("ai_mutation_success", handleRefresh);
+      window.removeEventListener("data-updated", handleRefresh);
+    };
+  }, [fetchSummary]);
 
   const handleTaskComplete = async (taskId: string) => {
     try {
