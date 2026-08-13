@@ -91,7 +91,7 @@ export async function interpretCommand(command: string, userId: string): Promise
   try {
     const declarations = functionRegistry.getAllDeclarations();
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       tools: [{ functionDeclarations: declarations }],
     });
 
