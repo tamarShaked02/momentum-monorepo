@@ -1231,4 +1231,298 @@ registryFunctions.set("create_automation", {
   },
 });
 
+// ----------------------------------------
+// 8. Explicit Active Operation Modules & Aliases
+// ----------------------------------------
+
+registryFunctions.set("update_inventory_quantity", {
+  action: "update_inventory_quantity",
+  module: "inventory",
+  description: "Increase, decrease, or set stock quantity for an inventory item by item name or ID.",
+  classification: "write",
+  parameters: z.object({
+    itemId: z.string().optional().describe("ID of the inventory item"),
+    itemName: z.string().optional().describe("Name of the item to update quantity for"),
+    quantity: z.number().describe("The quantity value or amount to change"),
+    changeType: z.enum(["set", "add", "subtract"]).optional().describe("Type of change: set exact stock, add stock, or subtract stock (default 'set')"),
+  }),
+  handler: async (params, userId) => {
+    let whereClause: any = { userId };
+    if (params.itemId) {
+      whereClause.id = params.itemId;
+    } else if (params.itemName) {
+      whereClause.name = { equals: params.itemName, mode: "insensitive" };
+    } else {
+      throw new Error("Either itemId or itemName is required to update stock quantity.");
+    }
+
+    const item = await prisma.inventoryItem.findFirst({ where: whereClause });
+    if (!item) throw new Error("Inventory item not found.");
+
+    let newQty = params.quantity;
+    if (params.changeType === "add") {
+      newQty = item.quantity + params.quantity;
+    } else if (params.changeType === "subtract") {
+      newQty = Math.max(0, item.quantity - params.quantity);
+    }
+
+    return await prisma.inventoryItem.update({
+      where: { id: item.id },
+      data: { quantity: newQty },
+    });
+  },
+});
+
+registryFunctions.set("create_inventory_item", {
+  action: "create_inventory_item",
+  module: "inventory",
+  description: "Create a new inventory product or item with name, stock quantity, category, and price.",
+  classification: "write",
+  parameters: z.object({
+    name: z.string().describe("Inventory item name"),
+    quantity: z.number().optional().describe("Initial stock quantity (default 0)"),
+    category: z.string().optional().describe("Category of the item"),
+    price: z.number().optional().describe("Selling price of the item"),
+    sku: z.string().optional().describe("SKU code of the item"),
+  }),
+  handler: async (params, userId) => {
+    return await prisma.inventoryItem.create({
+      data: {
+        userId,
+        name: params.name,
+        quantity: params.quantity || 0,
+        category: params.category || null,
+        price: params.price || null,
+        sku: params.sku || null,
+        lowThreshold: 5,
+      },
+    });
+  },
+});
+
+registryFunctions.set("update_task_status", {
+  action: "update_task_status",
+  module: "tasks",
+  description: "Update the status of a task to pending, in_progress, or done by task title or ID.",
+  classification: "write",
+  parameters: z.object({
+    taskId: z.string().optional().describe("Specific ID of the task"),
+    taskTitle: z.string().optional().describe("Title of the task to update status for"),
+    status: z.enum(["pending", "in_progress", "done"]).describe("New status of the task"),
+  }),
+  handler: async (params, userId) => {
+    let whereClause: any = { userId };
+    if (params.taskId) {
+      whereClause.id = params.taskId;
+    } else if (params.taskTitle) {
+      whereClause.title = { equals: params.taskTitle, mode: "insensitive" };
+    } else {
+      throw new Error("Either taskId or taskTitle is required to update task status.");
+    }
+
+    const task = await prisma.task.findFirst({ where: whereClause });
+    if (!task) throw new Error("Task not found.");
+
+    return await prisma.task.update({
+      where: { id: task.id },
+      data: { status: params.status },
+    });
+  },
+});
+
+registryFunctions.set("create_appointment", {
+  action: "create_appointment",
+  module: "scheduling",
+  description: "Create or schedule a new appointment or slot for a customer on a given date and time.",
+  classification: "write",
+  parameters: z.object({
+    title: z.string().describe("Appointment service title, e.g. 'Haircut' or 'Consultation'"),
+    date: z.string().describe("Date of appointment, e.g. 'tomorrow', '2026-08-15'"),
+    time: z.string().describe("Time of appointment, e.g. '3:00 PM', '15:00'"),
+    duration: z.number().optional().describe("Duration in minutes (default 60)"),
+    customerName: z.string().optional().describe("Name of the customer"),
+  }),
+  handler: async (params, userId) => {
+    let customerId: string | null = null;
+    if (params.customerName) {
+      const customer = await findOrCreateCustomer(params.customerName, userId);
+      customerId = customer.id;
+    }
+    const resolvedDate = resolveRelativeDate(`${params.date} at ${params.time}`);
+    const duration = params.duration || 60;
+    const endTime = new Date(resolvedDate);
+    endTime.setMinutes(endTime.getMinutes() + duration);
+
+    return await prisma.appointment.create({
+      data: {
+        userId,
+        title: params.title,
+        startTime: resolvedDate,
+        endTime,
+        customerId,
+        status: "scheduled",
+        source: "ai",
+      },
+      include: { customer: true },
+    });
+  },
+});
+
+registryFunctions.set("book_slot", {
+  action: "book_slot",
+  module: "scheduling",
+  description: "Book a specific time slot for an appointment or service booking request.",
+  classification: "write",
+  parameters: z.object({
+    title: z.string().describe("Title or service for the slot booking"),
+    date: z.string().describe("Date of slot, e.g. 'tomorrow'"),
+    time: z.string().describe("Time of slot, e.g. '2:00 PM'"),
+    duration: z.number().optional().describe("Duration in minutes"),
+    customerName: z.string().optional().describe("Name of the customer booking the slot"),
+  }),
+  handler: async (params, userId) => {
+    let customerId: string | null = null;
+    if (params.customerName) {
+      const customer = await findOrCreateCustomer(params.customerName, userId);
+      customerId = customer.id;
+    }
+    const resolvedDate = resolveRelativeDate(`${params.date} at ${params.time}`);
+    const duration = params.duration || 60;
+    const endTime = new Date(resolvedDate);
+    endTime.setMinutes(endTime.getMinutes() + duration);
+
+    return await prisma.appointment.create({
+      data: {
+        userId,
+        title: params.title,
+        startTime: resolvedDate,
+        endTime,
+        customerId,
+        status: "scheduled",
+        source: "ai",
+      },
+      include: { customer: true },
+    });
+  },
+});
+
+registryFunctions.set("create_contact", {
+  action: "create_contact",
+  module: "crm",
+  description: "Create a new contact or customer in the CRM with name, phone, email, company, or lifecycle stage.",
+  classification: "write",
+  parameters: z.object({
+    name: z.string().describe("Contact's full name"),
+    phone: z.string().optional().describe("Contact's phone number"),
+    email: z.string().optional().describe("Contact's email address"),
+    company: z.string().optional().describe("Contact's company name"),
+    lifecycleStage: z.string().optional().describe("Lifecycle stage (lead, subscriber, customer, etc.)"),
+  }),
+  handler: async (params, userId) => {
+    return await prisma.customer.create({
+      data: {
+        userId,
+        name: params.name,
+        phone: params.phone || null,
+        email: params.email || null,
+        company: params.company || null,
+        lifecycleStage: params.lifecycleStage || "lead",
+      },
+    });
+  },
+});
+
+registryFunctions.set("update_deal_stage", {
+  action: "update_deal_stage",
+  module: "crm",
+  description: "Move or update the stage of a deal in the sales pipeline by deal title or ID.",
+  classification: "write",
+  parameters: z.object({
+    dealId: z.string().optional().describe("ID of the deal"),
+    dealTitle: z.string().optional().describe("Title of the deal to update"),
+    targetStage: z.string().describe("Name of the target stage to move the deal into"),
+  }),
+  handler: async (params, userId) => {
+    let whereClause: any = { userId };
+    if (params.dealId) {
+      whereClause.id = params.dealId;
+    } else if (params.dealTitle) {
+      whereClause.title = { equals: params.dealTitle, mode: "insensitive" };
+    } else {
+      throw new Error("Either dealId or dealTitle is required to update deal stage.");
+    }
+
+    const deal = await prisma.deal.findFirst({ where: whereClause });
+    if (!deal) throw new Error("Deal not found.");
+
+    const stage = await prisma.stage.findFirst({
+      where: {
+        pipelineId: deal.pipelineId,
+        name: { equals: params.targetStage, mode: "insensitive" },
+      },
+    });
+    if (!stage) throw new Error(`Target stage '${params.targetStage}' not found.`);
+
+    return await prisma.deal.update({
+      where: { id: deal.id },
+      data: { stageId: stage.id },
+      include: { stage: true, contact: true },
+    });
+  },
+});
+
+registryFunctions.set("create_marketing_campaign", {
+  action: "create_marketing_campaign",
+  module: "marketing",
+  description: "Create a new marketing campaign with parameters: name, type/channel, target audience/goal, and status.",
+  classification: "write",
+  parameters: z.object({
+    name: z.string().describe("Name of the marketing campaign"),
+    type: z.enum(["email", "sms", "social"]).optional().describe("Campaign marketing channel or type"),
+    targetAudience: z.string().optional().describe("Target audience description, tags, or campaign goal"),
+    status: z.enum(["draft", "active", "scheduled", "completed", "paused"]).optional().describe("Status of the campaign"),
+  }),
+  handler: async (params, userId) => {
+    return await prisma.marketingCampaign.create({
+      data: {
+        userId,
+        name: params.name,
+        goal: params.targetAudience || null,
+        channels: params.type ? [params.type] : [],
+        status: params.status || "draft",
+      },
+    });
+  },
+});
+
+registryFunctions.set("update_campaign_status", {
+  action: "update_campaign_status",
+  module: "marketing",
+  description: "Update the status of a marketing campaign (draft, active, scheduled, completed, paused) by campaign name or ID.",
+  classification: "write",
+  parameters: z.object({
+    campaignId: z.string().optional().describe("ID of the marketing campaign"),
+    campaignName: z.string().optional().describe("Name of the marketing campaign to update"),
+    status: z.enum(["draft", "active", "scheduled", "completed", "paused"]).describe("New status for the campaign"),
+  }),
+  handler: async (params, userId) => {
+    let whereClause: any = { userId };
+    if (params.campaignId) {
+      whereClause.id = params.campaignId;
+    } else if (params.campaignName) {
+      whereClause.name = { equals: params.campaignName, mode: "insensitive" };
+    } else {
+      throw new Error("Either campaignId or campaignName is required.");
+    }
+
+    const campaign = await prisma.marketingCampaign.findFirst({ where: whereClause });
+    if (!campaign) throw new Error("Campaign not found.");
+
+    return await prisma.marketingCampaign.update({
+      where: { id: campaign.id },
+      data: { status: params.status },
+    });
+  },
+});
+
 

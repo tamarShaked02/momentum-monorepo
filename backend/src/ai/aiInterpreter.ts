@@ -24,9 +24,117 @@ const getClient = () => {
   return new GoogleGenerativeAI(apiKey);
 };
 
-// Simple regex fallback for mock mode / failures
+// Comprehensive regex fallback for mock mode / failures
 function regexFallback(command: string): InterpretResult {
   const lower = command.toLowerCase().trim();
+
+  // Create marketing campaign: create campaign Summer Sale
+  const campaignMatch = lower.match(/(?:create|new|start)\s+(?:marketing\s+)?campaign\s+(.+)/i);
+  if (campaignMatch) {
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "create_marketing_campaign",
+        parameters: { name: campaignMatch[1].trim() },
+      },
+    };
+  }
+
+  // Update campaign status
+  const campaignStatusMatch = lower.match(/(?:set|update)\s+campaign\s+(.+?)\s+status\s+to\s+(\w+)/i);
+  if (campaignStatusMatch) {
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "update_campaign_status",
+        parameters: {
+          campaignName: campaignStatusMatch[1].trim(),
+          status: campaignStatusMatch[2].trim().toLowerCase(),
+        },
+      },
+    };
+  }
+
+  // Create inventory item: add inventory item Shampoo
+  const itemMatch = lower.match(/(?:create|add)\s+inventory\s+item\s+(.+)/i);
+  if (itemMatch) {
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "create_inventory_item",
+        parameters: { name: itemMatch[1].trim() },
+      },
+    };
+  }
+
+  // Update inventory quantity: update stock for Shampoo to 20 / add 10 stock for Shampoo
+  const stockMatch = lower.match(/(?:update|set|add|increase|decrease)\s+(?:stock|inventory)\s+(?:for\s+)?(.+?)\s+(?:to|by)\s+(\d+)/i);
+  if (stockMatch) {
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "update_inventory_quantity",
+        parameters: {
+          itemName: stockMatch[1].trim(),
+          quantity: parseInt(stockMatch[2], 10),
+        },
+      },
+    };
+  }
+
+  // Create task: create task Buy supplies
+  const taskMatch = lower.match(/(?:create|add)\s+task\s+(.+)/i);
+  if (taskMatch) {
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "create_task",
+        parameters: { title: taskMatch[1].trim() },
+      },
+    };
+  }
+
+  // Update task status: mark task Buy supplies as done
+  const taskStatusMatch = lower.match(/(?:mark|set|update)\s+task\s+(.+?)\s+(?:as|status|to)\s+(\w+)/i);
+  if (taskStatusMatch) {
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "update_task_status",
+        parameters: {
+          taskTitle: taskStatusMatch[1].trim(),
+          status: taskStatusMatch[2].trim().toLowerCase() === "completed" ? "done" : taskStatusMatch[2].trim().toLowerCase(),
+        },
+      },
+    };
+  }
+
+  // Create contact: create contact John Doe
+  const contactMatch = lower.match(/(?:create|add)\s+(?:contact|customer)\s+(.+)/i);
+  if (contactMatch) {
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "create_contact",
+        parameters: { name: contactMatch[1].trim() },
+      },
+    };
+  }
+
+  // Update deal stage: move deal Website Project to Closed Won
+  const dealStageMatch = lower.match(/(?:move|update)\s+deal\s+(.+?)\s+to\s+(?:stage\s+)?(.+)/i);
+  if (dealStageMatch) {
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "update_deal_stage",
+        parameters: {
+          dealTitle: dealStageMatch[1].trim(),
+          targetStage: dealStageMatch[2].trim(),
+        },
+      },
+    };
+  }
 
   // Book appointment: book manicure on Friday at 2pm
   const bookRegex = /book\s+(.+?)\s+(?:on\s+)?(.+?)\s+(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i;
@@ -35,7 +143,7 @@ function regexFallback(command: string): InterpretResult {
     return {
       type: "function_call",
       functionCall: {
-        action: "book_appointment",
+        action: "create_appointment",
         parameters: {
           title: bookMatch[1].trim(),
           date: bookMatch[2].trim(),
@@ -74,7 +182,7 @@ function regexFallback(command: string): InterpretResult {
 
   return {
     type: "unknown",
-    unknownMessage: "I'm not sure how to help with that. Try 'Book an appointment for tomorrow at 3pm'.",
+    unknownMessage: "I'm not sure how to help with that. Try 'Create a marketing campaign Summer Sale' or 'Create a task Buy supplies'.",
   };
 }
 
