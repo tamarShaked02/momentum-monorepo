@@ -1,5 +1,6 @@
 import { functionRegistry } from "./functionRegistry.js";
 import { createConfirmationToken, validateConfirmationToken } from "./confirmationManager.js";
+import { withAutoProvisioning } from "./autoProvisioner.js";
 import { ZodError } from "zod";
 
 export interface CommandResult {
@@ -83,9 +84,14 @@ export const commandEngine = {
       };
     }
 
-    // Execute handler
+    // Execute handler with auto-provisioning
     try {
-      const resultData = await definition.handler(parameters, userId);
+      const moduleName = definition.module || "general";
+      const { result: resultData, systemNote } = await withAutoProvisioning(
+        moduleName,
+        userId,
+        () => definition.handler(parameters, userId)
+      );
 
       let message = `Successfully executed ${action}.`;
       if (action === "update_inventory_quantity" || action === "update_inventory") {
@@ -121,6 +127,10 @@ export const commandEngine = {
         const name = resultData?.name ?? parameters.campaignName ?? "Campaign";
         const status = resultData?.status ?? parameters.status;
         message = `Successfully updated campaign "${name}" status to ${status}.`;
+      }
+
+      if (systemNote) {
+        message += ` ${systemNote}`;
       }
 
       return {
