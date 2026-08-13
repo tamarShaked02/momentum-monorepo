@@ -40,6 +40,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [token]);
 
+  useEffect(() => {
+    const handlePermissionsUpdate = () => {
+      if (token) {
+        refreshUser();
+      }
+    };
+
+    window.addEventListener('permissions_updated', handlePermissionsUpdate);
+    window.addEventListener('ai_mutation_success', handlePermissionsUpdate);
+    return () => {
+      window.removeEventListener('permissions_updated', handlePermissionsUpdate);
+      window.removeEventListener('ai_mutation_success', handlePermissionsUpdate);
+    };
+  }, [token]);
+
   const login = async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password });
     const { token: newToken, user: userData } = res.data;

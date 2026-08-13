@@ -42,6 +42,7 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
       setShowResult(true);
       setCommand("");
       if (res.data?.success) {
+        window.dispatchEvent(new CustomEvent("permissions_updated", { detail: res.data }));
         window.dispatchEvent(new CustomEvent("ai_mutation_success", { detail: res.data }));
         window.dispatchEvent(new Event("inventory-updated"));
         window.dispatchEvent(new Event("crm-updated"));
