@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, FunctionCallingMode } from "@google/generative-ai";
 import { env } from "../config/env.js";
 import { functionRegistry } from "./functionRegistry.js";
 
@@ -63,6 +63,24 @@ function regexFallback(command: string): InterpretResult {
       functionCall: {
         action: "create_inventory_item",
         parameters: { name: itemMatch[1].trim() },
+      },
+    };
+  }
+
+  // Bought or added items: "bought 3 Fabric items", "i bought 5 shampoos", "add 3 Fabric"
+  const buyMatch = lower.match(/(?:i\s+)?(?:bought|purchased|added|got)\s+(\d+)\s+(.+)/i);
+  if (buyMatch) {
+    const qty = parseInt(buyMatch[1], 10);
+    const itemName = buyMatch[2].replace(/items?/gi, "").replace(/units?\s+of/gi, "").trim();
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "update_inventory_quantity",
+        parameters: {
+          itemName,
+          quantity: qty,
+          changeType: "add",
+        },
       },
     };
   }
@@ -201,6 +219,13 @@ export async function interpretCommand(command: string, userId: string): Promise
     const model = genAI.getGenerativeModel({
       model: "gemini-flash-latest",
       tools: [{ functionDeclarations: declarations }],
+      systemInstruction:
+        "You are an active operational AI assistant for a business management platform. You MUST use function tools whenever a user requests an action (buying, adding, creating, updating, or deleting inventory, tasks, appointments, contacts, deals, or marketing campaigns). For example, if a user says they bought or added items (e.g. 'I bought 5 Shampoos' or 'Add 3 Fabric items'), you MUST call `update_inventory_quantity` or `create_inventory_item`. Do not reply with plain text alone when an active operation tool is available.",
+      toolConfig: {
+        functionCallingConfig: {
+          mode: FunctionCallingMode.AUTO,
+        },
+      },
     });
 
     const session = model.startChat({

@@ -1256,7 +1256,17 @@ registryFunctions.set("update_inventory_quantity", {
       throw new Error("Either itemId or itemName is required to update stock quantity.");
     }
 
-    const item = await prisma.inventoryItem.findFirst({ where: whereClause });
+    let item = await prisma.inventoryItem.findFirst({ where: whereClause });
+    if (!item && params.itemName) {
+      return await prisma.inventoryItem.create({
+        data: {
+          userId,
+          name: params.itemName,
+          quantity: params.quantity,
+          lowThreshold: 5,
+        },
+      });
+    }
     if (!item) throw new Error("Inventory item not found.");
 
     let newQty = params.quantity;

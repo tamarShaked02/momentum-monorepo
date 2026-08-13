@@ -86,11 +86,48 @@ export const commandEngine = {
     // Execute handler
     try {
       const resultData = await definition.handler(parameters, userId);
+
+      let message = `Successfully executed ${action}.`;
+      if (action === "update_inventory_quantity" || action === "update_inventory") {
+        const qty = resultData?.quantity ?? parameters.quantity;
+        const name = resultData?.name ?? parameters.itemName ?? "item";
+        message = `Successfully updated stock for ${name} (Quantity: ${qty}).`;
+      } else if (action === "create_inventory_item" || action === "add_inventory_item") {
+        const name = resultData?.name ?? parameters.name;
+        const qty = resultData?.quantity ?? parameters.quantity ?? 0;
+        message = `Successfully added ${qty > 0 ? qty + " " : ""}${name} to inventory.`;
+      } else if (action === "create_task") {
+        const title = resultData?.title ?? parameters.title;
+        message = `Successfully created task: "${title}".`;
+      } else if (action === "update_task_status" || action === "complete_task") {
+        const title = resultData?.title ?? parameters.taskTitle ?? "Task";
+        const status = resultData?.status ?? parameters.status ?? "done";
+        message = `Successfully updated task "${title}" status to ${status}.`;
+      } else if (action === "create_appointment" || action === "book_appointment" || action === "book_slot") {
+        const title = resultData?.title ?? parameters.title;
+        const date = parameters.date || "scheduled date";
+        message = `Successfully booked appointment "${title}" for ${date}.`;
+      } else if (action === "create_contact" || action === "add_customer") {
+        const name = resultData?.name ?? parameters.name;
+        message = `Successfully created contact: ${name}.`;
+      } else if (action === "update_deal_stage" || action === "move_deal") {
+        const title = resultData?.title ?? parameters.dealTitle ?? "Deal";
+        const stage = resultData?.stage?.name ?? parameters.targetStage;
+        message = `Successfully moved deal "${title}" to stage "${stage}".`;
+      } else if (action === "create_marketing_campaign" || action === "create_campaign") {
+        const name = resultData?.name ?? parameters.name;
+        message = `Successfully created marketing campaign: "${name}".`;
+      } else if (action === "update_campaign_status") {
+        const name = resultData?.name ?? parameters.campaignName ?? "Campaign";
+        const status = resultData?.status ?? parameters.status;
+        message = `Successfully updated campaign "${name}" status to ${status}.`;
+      }
+
       return {
         success: true,
         type: "result",
         data: resultData,
-        message: `Successfully executed ${action}.`,
+        message,
       };
     } catch (handlerErr: any) {
       console.error(`Handler execution error for ${action}:`, handlerErr);

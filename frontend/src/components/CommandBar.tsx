@@ -41,6 +41,12 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
       setResult(res.data);
       setShowResult(true);
       setCommand("");
+      if (res.data?.success) {
+        window.dispatchEvent(new Event("inventory-updated"));
+        window.dispatchEvent(new Event("crm-updated"));
+        window.dispatchEvent(new Event("tasks-updated"));
+        window.dispatchEvent(new Event("data-updated"));
+      }
     } catch {
       setResult({ success: false, type: "error", message: "Failed to process command." });
       setShowResult(true);
