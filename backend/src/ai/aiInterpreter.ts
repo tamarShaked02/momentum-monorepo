@@ -259,7 +259,7 @@ async function sendMessageWithRetry(session: any, command: string): Promise<any>
     try {
       const responsePromise = session.sendMessage(command);
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout")), 15000)
+        setTimeout(() => reject(new Error("Timeout")), 30000)
       );
       return await Promise.race([responsePromise, timeoutPromise]);
     } catch (error: any) {
@@ -270,6 +270,7 @@ async function sendMessageWithRetry(session: any, command: string): Promise<any>
         status === 429 ||
         msg.includes("503") ||
         msg.includes("429") ||
+        msg.includes("Timeout") ||
         msg.includes("high demand") ||
         msg.includes("overloaded") ||
         msg.includes("Service Unavailable") ||
@@ -277,7 +278,7 @@ async function sendMessageWithRetry(session: any, command: string): Promise<any>
 
       if (isTransientError && attempt < maxRetries) {
         const delay = delays[attempt] || 4000;
-        console.warn(`Gemini API 503/429 transient error (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`);
+        console.warn(`API Timeout/503/429 transient error (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
@@ -349,7 +350,25 @@ export async function interpretCommand(command: string, userId: string): Promise
       };
     }
   } catch (error: any) {
-    console.error("Gemini interpretation error:", error);
+    const status = error?.status || error?.statusCode;
+    const msg = error?.message || "";
+    const isTransientError =
+      status === 503 ||
+      status === 429 ||
+      msg.includes("503") ||
+      msg.includes("429") ||
+      msg.includes("Timeout") ||
+      msg.includes("high demand") ||
+      msg.includes("overloaded") ||
+      msg.includes("Service Unavailable") ||
+      msg.includes("UNAVAILABLE");
+
+    if (isTransientError) {
+      console.warn(`Gemini API service transient limit reached: ${msg || status || "Timeout"}`);
+    } else {
+      console.error("Gemini interpretation error:", error);
+    }
+
     // Attempt regex fallback if it matches a tool pattern
     const fallbackResult = regexFallback(command);
     if (fallbackResult.type === "function_call") {
