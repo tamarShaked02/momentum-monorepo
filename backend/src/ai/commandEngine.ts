@@ -156,6 +156,57 @@ export const commandEngine = {
         const profit = resultData?.monthlyProfit ?? 0;
         const revenue = resultData?.monthlyRevenue ?? 0;
         message = `Your monthly profit is $${profit.toLocaleString()} (Total Revenue: $${revenue.toLocaleString()}).`;
+      } else if (action === "get_schedule") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No appointments found in your schedule.";
+        } else {
+          const apptSummary = resultData.map((a: any) => `"${a.title}" with ${a.customerName} (${a.status})`).join(", ");
+          message = `Schedule (${resultData.length}): ${apptSummary}.`;
+        }
+      } else if (action === "get_customers") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No matching customers found.";
+        } else {
+          const custSummary = resultData.map((c: any) => `${c.name} (${c.email || "no email"})`).join(", ");
+          message = `Customers (${resultData.length}): ${custSummary}.`;
+        }
+      } else if (action === "get_pipeline_deals") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No sales deals found.";
+        } else {
+          const dealSummary = resultData.map((d: any) => `"${d.title}" ($${d.value || 0}, Stage: ${d.stage})`).join(", ");
+          message = `Pipeline Deals (${resultData.length}): ${dealSummary}.`;
+        }
+      } else if (action === "create_customer") {
+        const name = resultData?.name ?? parameters.name;
+        message = `Successfully created customer: ${name}.`;
+      } else if (action === "get_campaigns") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No marketing campaigns found.";
+        } else {
+          const campSummary = resultData.map((c: any) => `"${c.name}" (${c.status})`).join(", ");
+          message = `Marketing Campaigns (${resultData.length}): ${campSummary}.`;
+        }
+      } else if (action === "create_campaign") {
+        const name = resultData?.name ?? parameters.name;
+        message = `Successfully created marketing campaign: "${name}".`;
+      } else if (action === "get_tasks") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No tasks found.";
+        } else {
+          const taskSummary = resultData.map((t: any) => `"${t.title}" (${t.status})`).join(", ");
+          message = `Tasks (${resultData.length}): ${taskSummary}.`;
+        }
+      } else if (action === "update_stock_quantity") {
+        const qty = resultData?.quantity ?? parameters.quantity;
+        const name = resultData?.name ?? parameters.itemName ?? "item";
+        message = `Successfully updated stock quantity for ${name} (Quantity: ${qty}).`;
+      } else if (action === "get_business_analytics") {
+        const rev = resultData?.revenueSummary?.totalRevenue ?? 0;
+        const prof = resultData?.revenueSummary?.netProfit ?? 0;
+        const cap = resultData?.bookingCapacity?.capacityPercentage ?? 0;
+        const lowCount = resultData?.inventoryTrends?.lowStockCount ?? 0;
+        message = `Business Analytics: Revenue: $${rev.toLocaleString()}, Net Profit: $${prof.toLocaleString()}, Booking Capacity: ${cap}%, Low Stock Items: ${lowCount}.`;
       }
 
       if (systemNote) {
