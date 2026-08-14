@@ -85,3 +85,73 @@ select {
     transform: translateY(0);
   }
 }
+
+/* Universal Table Alignment Standards */
+table,
+.MuiTable-root {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td,
+.MuiTableCell-root {
+  vertical-align: middle !important;
+  font-family: "Poppins", sans-serif;
+  padding: 12px 16px !important;
+}
+
+.MuiTableCell-head {
+  font-weight: 600 !important;
+  vertical-align: middle !important;
+}
+
+/* DataGrid Universal Alignment Standards */
+.MuiDataGrid-root {
+  font-family: "Poppins", sans-serif !important;
+}
+
+.MuiDataGrid-row {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.MuiDataGrid-columnHeaders {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.MuiDataGrid-columnHeader {
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 16px !important;
+}
+
+.MuiDataGrid-columnHeaderTitleContainer {
+  display: flex !important;
+  align-items: center !important;
+  height: 100% !important;
+}
+
+.MuiDataGrid-cell {
+  display: flex !important;
+  align-items: center !important;
+  align-content: center !important;
+  padding: 0 16px !important;
+}
+
+.MuiDataGrid-columnHeaderCheckbox,
+.MuiDataGrid-cellCheckbox {
+  padding: 0 8px !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+.MuiDataGrid-columnHeaderCheckbox .MuiDataGrid-columnHeaderTitleContainer,
+.MuiDataGrid-columnHeaderCheckbox .MuiDataGrid-columnHeaderTitleContainerContent {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+}

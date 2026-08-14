@@ -110,6 +110,15 @@ const ContactsTab: React.FC<ContactsTabProps> = ({
 
   useEffect(() => {
     fetchContacts();
+    const handleRefresh = () => fetchContacts();
+    window.addEventListener("ai_mutation_success", handleRefresh);
+    window.addEventListener("crm-updated", handleRefresh);
+    window.addEventListener("data-updated", handleRefresh);
+    return () => {
+      window.removeEventListener("ai_mutation_success", handleRefresh);
+      window.removeEventListener("crm-updated", handleRefresh);
+      window.removeEventListener("data-updated", handleRefresh);
+    };
   }, [fetchContacts]);
 
   // Debounce search input
@@ -141,6 +150,13 @@ const ContactsTab: React.FC<ContactsTabProps> = ({
         flex: 1.5,
         minWidth: 150,
         sortable: true,
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }} noWrap>
+              {params.value || "—"}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "email",
@@ -149,9 +165,11 @@ const ContactsTab: React.FC<ContactsTabProps> = ({
         minWidth: 180,
         sortable: true,
         renderCell: (params) => (
-          <Typography variant="body2" sx={{ color: "text.secondary" }} noWrap>
-            {params.value || "—"}
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" sx={{ color: "text.secondary" }} noWrap>
+              {params.value || "—"}
+            </Typography>
+          </Box>
         ),
       },
       {
@@ -161,9 +179,11 @@ const ContactsTab: React.FC<ContactsTabProps> = ({
         minWidth: 130,
         sortable: true,
         renderCell: (params) => (
-          <Typography variant="body2" noWrap>
-            {params.value || "—"}
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" noWrap>
+              {params.value || "—"}
+            </Typography>
+          </Box>
         ),
       },
       {
@@ -175,19 +195,21 @@ const ContactsTab: React.FC<ContactsTabProps> = ({
         renderCell: (params) => {
           const stage = params.value as LifecycleStage;
           return (
-            <Chip
-              label={LIFECYCLE_STAGE_LABELS[stage] || stage}
-              color={
-                (LIFECYCLE_STAGE_COLORS[stage] as
-                  | "info"
-                  | "warning"
-                  | "success"
-                  | "secondary"
-                  | "error") || "default"
-              }
-              size="small"
-              variant="outlined"
-            />
+            <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+              <Chip
+                label={LIFECYCLE_STAGE_LABELS[stage] || stage}
+                color={
+                  (LIFECYCLE_STAGE_COLORS[stage] as
+                    | "info"
+                    | "warning"
+                    | "success"
+                    | "secondary"
+                    | "error") || "default"
+                }
+                size="small"
+                variant="outlined"
+              />
+            </Box>
           );
         },
       },
@@ -201,7 +223,7 @@ const ContactsTab: React.FC<ContactsTabProps> = ({
           const tags = params.row.tags || [];
           if (tags.length === 0) return "—";
           return (
-            <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", py: 0.5 }}>
+            <Box sx={{ display: "flex", gap: 0.5, alignItems: "center", flexWrap: "nowrap", height: "100%" }}>
               {tags
                 .slice(0, 3)
                 .map(
@@ -245,9 +267,11 @@ const ContactsTab: React.FC<ContactsTabProps> = ({
         minWidth: 120,
         sortable: true,
         renderCell: (params) => (
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            {new Date(params.value).toLocaleDateString()}
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              {new Date(params.value).toLocaleDateString()}
+            </Typography>
+          </Box>
         ),
       },
     ],

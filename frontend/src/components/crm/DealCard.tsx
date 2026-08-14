@@ -79,7 +79,7 @@ const DealCard: React.FC<DealCardProps> = ({
       sx={{
         p: 1.5,
         mb: 1.5,
-        borderRadius: 2,
+        borderRadius: 1,
         cursor: dragging ? "grabbing" : "pointer",
         userSelect: "none",
         bgcolor: "background.paper",

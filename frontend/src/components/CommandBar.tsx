@@ -12,7 +12,7 @@ import {
   useTheme,
   Chip,
 } from "@mui/material";
-import { Menu as MenuIcon, AutoAwesome, Close } from "@mui/icons-material";
+import { Menu as MenuIcon, AutoAwesome } from "@mui/icons-material";
 import api from "../api/client";
 
 interface CommandBarProps {
@@ -31,6 +31,18 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
+  const isFallbackOrError = (resData: any) => {
+    if (!resData || resData.success === false || resData.type === "error" || resData.type === "unknown") {
+      return true;
+    }
+    const msg = resData.message || "";
+    return (
+      msg.includes("high demand") ||
+      msg.includes("experiencing exceptionally high demand") ||
+      msg.includes("try your request again")
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!command.trim() || loading) return;
@@ -38,11 +50,28 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
     setLoading(true);
     try {
       const res = await api.post("/ai/command", { command: command.trim() });
-      console.log("", res.data);
+      const failed = isFallbackOrError(res.data);
+      const formattedResult = {
+        ...res.data,
+        success: !failed && Boolean(res.data?.success),
+        type: failed ? "error" : (res.data?.type || "result"),
+      };
 
-      setResult(res.data);
+      setResult(formattedResult);
       setShowResult(true);
       setCommand("");
+
+      if (!failed && res.data?.success) {
+        window.dispatchEvent(new CustomEvent("permissions_updated", { detail: res.data }));
+        window.dispatchEvent(new CustomEvent("ai_mutation_success", { detail: res.data }));
+        window.dispatchEvent(new Event("inventory-updated"));
+        window.dispatchEvent(new Event("crm-updated"));
+        window.dispatchEvent(new Event("deals-updated"));
+        window.dispatchEvent(new Event("tasks-updated"));
+        window.dispatchEvent(new Event("appointments-updated"));
+        window.dispatchEvent(new Event("marketing-updated"));
+        window.dispatchEvent(new Event("data-updated"));
+      }
     } catch {
       setResult({ success: false, type: "error", message: "Failed to process command." });
       setShowResult(true);
@@ -53,8 +82,12 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
 
   const getResultMessage = () => {
     if (!result) return "";
-    if (result.type === "unknown" || result.type === "error" || !result.success)
+    if (isFallbackOrError(result)) {
       return result.message || "Something went wrong.";
+    }
+    if (result.type === "clarification") {
+      return `💬 ${result.message}`;
+    }
     return `✅ ${result.message || "Action completed successfully"}`;
   };
 

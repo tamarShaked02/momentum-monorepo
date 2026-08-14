@@ -15,8 +15,10 @@ import {
   TextField,
   Typography,
   CircularProgress,
+  Autocomplete,
 } from "@mui/material";
 import { ViewKanban, TableChart, Add as AddIcon } from "@mui/icons-material";
+import DatePickerInput from "../calendar/DatePickerInput";
 import {
   DataGrid,
   type GridColDef,
@@ -27,6 +29,7 @@ import {
   getPipelines,
   createDeal,
   moveDealToStage,
+  getContacts,
 } from "../../api/crm";
 import type {
   Deal,
@@ -34,7 +37,9 @@ import type {
   DealCreateData,
   Pipeline,
   Stage,
+  Contact,
 } from "../../types/crm";
+import { useSnackbar } from "../../contexts/SnackbarContext";
 import KanbanBoard from "./KanbanBoard";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -92,6 +97,8 @@ function getPersistedFilters(): DealFilters {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const DealsTab: React.FC = () => {
+  const { showSuccess, showError } = useSnackbar();
+
   // View mode
   const [viewMode, setViewMode] = useState<ViewMode>(getPersistedView);
 
@@ -101,6 +108,7 @@ const DealsTab: React.FC = () => {
   // Data state
   const [deals, setDeals] = useState<Deal[]>([]);
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [totalDeals, setTotalDeals] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -131,19 +139,25 @@ const DealsTab: React.FC = () => {
     }
   }, [filters]);
 
-  // ─── Load pipelines ──────────────────────────────────────────────────
+  // ─── Load pipelines & contacts ───────────────────────────────────────
 
   useEffect(() => {
     let cancelled = false;
-    async function loadPipelines() {
+    async function loadInitialData() {
       try {
-        const data = await getPipelines();
-        if (!cancelled) setPipelines(data);
-      } catch {
-        // silent — pipelines list may be empty
+        const [pipelinesData, contactsData] = await Promise.all([
+          getPipelines(),
+          getContacts({ pageSize: 500 }).catch(() => ({ data: [] })),
+        ]);
+        if (!cancelled) {
+          setPipelines(pipelinesData);
+          setContacts(contactsData.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to load initial pipelines or contacts:", err);
       }
     }
-    loadPipelines();
+    loadInitialData();
     return () => {
       cancelled = true;
     };
@@ -193,6 +207,17 @@ const DealsTab: React.FC = () => {
 
   useEffect(() => {
     fetchDeals();
+    const handleRefresh = () => fetchDeals();
+    window.addEventListener("ai_mutation_success", handleRefresh);
+    window.addEventListener("crm-updated", handleRefresh);
+    window.addEventListener("deals-updated", handleRefresh);
+    window.addEventListener("data-updated", handleRefresh);
+    return () => {
+      window.removeEventListener("ai_mutation_success", handleRefresh);
+      window.removeEventListener("crm-updated", handleRefresh);
+      window.removeEventListener("deals-updated", handleRefresh);
+      window.removeEventListener("data-updated", handleRefresh);
+    };
   }, [fetchDeals]);
 
   // ─── Filter change handlers ──────────────────────────────────────────
@@ -243,10 +268,21 @@ const DealsTab: React.FC = () => {
       !dealForm.contactId ||
       !dealForm.pipelineId ||
       !dealForm.stageId
-    )
+    ) {
+      console.warn("Create Deal failed validation: Missing required fields", dealForm);
+      showError("Please fill in all required fields (Title, Contact, Pipeline, Stage)");
       return;
+    }
     setDealSaving(true);
     try {
+      let formattedCloseDate: string | undefined = undefined;
+      if (dealForm.expectedCloseDate) {
+        const parsedDate = new Date(dealForm.expectedCloseDate);
+        if (!isNaN(parsedDate.getTime())) {
+          formattedCloseDate = parsedDate.toISOString();
+        }
+      }
+
       const data: DealCreateData = {
         title: dealForm.title.trim(),
         contactId: dealForm.contactId,
@@ -256,9 +292,12 @@ const DealsTab: React.FC = () => {
         winProbability: dealForm.winProbability
           ? Number(dealForm.winProbability)
           : undefined,
-        expectedCloseDate: dealForm.expectedCloseDate || undefined,
+        expectedCloseDate: formattedCloseDate,
       };
+
+      console.log("Submitting Create Deal payload:", data);
       await createDeal(data);
+      showSuccess("Deal created successfully");
       setCreateDialogOpen(false);
       setDealForm({
         title: "",
@@ -270,8 +309,10 @@ const DealsTab: React.FC = () => {
         expectedCloseDate: "",
       });
       await fetchDeals();
-    } catch (error) {
-      console.error("Failed to create deal:", error);
+    } catch (error: any) {
+      const serverMsg = error?.response?.data?.error || error?.message || "Failed to create deal";
+      console.error("Failed to create deal:", error, "Server Response:", error?.response?.data);
+      showError(serverMsg);
     } finally {
       setDealSaving(false);
     }
@@ -286,14 +327,28 @@ const DealsTab: React.FC = () => {
         headerName: "Title",
         flex: 1.5,
         minWidth: 180,
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }} noWrap>
+              {params.value}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "value",
         headerName: "Value",
         width: 120,
         type: "number",
-        valueFormatter: (value: number | null) =>
-          value != null ? `$${value.toLocaleString()}` : "—",
+        headerAlign: "left",
+        align: "left",
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2">
+              {params.value != null ? `$${Number(params.value).toLocaleString()}` : "—"}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "contact",
@@ -301,36 +356,66 @@ const DealsTab: React.FC = () => {
         flex: 1,
         minWidth: 140,
         sortable: false,
-        valueGetter: (_value: unknown, row: Deal) => row.contact?.name ?? "—",
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" sx={{ color: "text.secondary" }} noWrap>
+              {params.row.contact?.name ?? "—"}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "stage",
         headerName: "Stage",
         width: 140,
         sortable: false,
-        valueGetter: (_value: unknown, row: Deal) => row.stage?.name ?? "—",
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" noWrap>
+              {params.row.stage?.name ?? "—"}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "pipeline",
         headerName: "Pipeline",
         width: 140,
         sortable: false,
-        valueGetter: (_value: unknown, row: Deal) => row.pipeline?.name ?? "—",
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" sx={{ color: "text.secondary" }} noWrap>
+              {params.row.pipeline?.name ?? "—"}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "winProbability",
         headerName: "Win %",
         width: 90,
         type: "number",
-        valueFormatter: (value: number | null) =>
-          value != null ? `${value}%` : "—",
+        headerAlign: "left",
+        align: "left",
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2">
+              {params.value != null ? `${params.value}%` : "—"}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "expectedCloseDate",
         headerName: "Expected Close",
         width: 140,
-        valueFormatter: (value: string | null) =>
-          value ? new Date(value).toLocaleDateString() : "—",
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              {params.value ? new Date(params.value).toLocaleDateString() : "—"}
+            </Typography>
+          </Box>
+        ),
       },
       {
         field: "status",
@@ -343,16 +428,18 @@ const DealsTab: React.FC = () => {
             lost: "error.main",
           };
           return (
-            <Typography
-              variant="caption"
-              sx={{
-                color: colorMap[params.value] ?? "text.secondary",
-                fontWeight: 600,
-                textTransform: "capitalize",
-              }}
-            >
-              {params.value}
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: colorMap[params.value] ?? "text.secondary",
+                  fontWeight: 600,
+                  textTransform: "capitalize",
+                }}
+              >
+                {params.value}
+              </Typography>
+            </Box>
           );
         },
       },
@@ -448,28 +535,26 @@ const DealsTab: React.FC = () => {
       {/* Kanban-specific: date range filters */}
       {viewMode === "kanban" && (
         <>
-          <TextField
-            label="Close From"
-            size="small"
-            type="date"
-            value={filters.expectedCloseDateFrom}
-            onChange={(e) =>
-              handleFilterChange("expectedCloseDateFrom", e.target.value)
-            }
-            sx={{ width: 160 }}
-            slotProps={{ inputLabel: { shrink: true } }}
-          />
-          <TextField
-            label="Close To"
-            size="small"
-            type="date"
-            value={filters.expectedCloseDateTo}
-            onChange={(e) =>
-              handleFilterChange("expectedCloseDateTo", e.target.value)
-            }
-            sx={{ width: 160 }}
-            slotProps={{ inputLabel: { shrink: true } }}
-          />
+          <Box sx={{ width: 160 }}>
+            <DatePickerInput
+              label="Close From"
+              value={filters.expectedCloseDateFrom}
+              onChange={(val) =>
+                handleFilterChange("expectedCloseDateFrom", val)
+              }
+              type="date"
+            />
+          </Box>
+          <Box sx={{ width: 160 }}>
+            <DatePickerInput
+              label="Close To"
+              value={filters.expectedCloseDateTo}
+              onChange={(val) =>
+                handleFilterChange("expectedCloseDateTo", val)
+              }
+              type="date"
+            />
+          </Box>
         </>
       )}
     </Box>
@@ -650,16 +735,31 @@ const DealsTab: React.FC = () => {
             size="small"
             fullWidth
           />
-          <TextField
-            label="Contact ID"
-            value={dealForm.contactId}
-            onChange={(e) =>
-              setDealForm({ ...dealForm, contactId: e.target.value })
+          <Autocomplete
+            options={contacts}
+            getOptionLabel={(option) =>
+              typeof option === "string"
+                ? option
+                : `${option.name}${option.company ? ` (${option.company})` : ""}`
             }
-            required
-            size="small"
+            value={contacts.find((c) => c.id === dealForm.contactId) || null}
+            onChange={(_e, newValue) => {
+              setDealForm({
+                ...dealForm,
+                contactId: newValue ? newValue.id : "",
+              });
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Contact *"
+                placeholder="Select contact"
+                size="small"
+                required
+              />
+            )}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
             fullWidth
-            placeholder="Paste contact ID"
           />
           <Box sx={{ display: "flex", gap: 2 }}>
             <FormControl fullWidth size="small" required>
@@ -741,16 +841,14 @@ const DealsTab: React.FC = () => {
               }}
             />
           </Box>
-          <TextField
+          <DatePickerInput
             label="Expected Close Date"
-            type="date"
             value={dealForm.expectedCloseDate}
-            onChange={(e) =>
-              setDealForm({ ...dealForm, expectedCloseDate: e.target.value })
+            onChange={(val) =>
+              setDealForm({ ...dealForm, expectedCloseDate: val })
             }
-            size="small"
+            type="date"
             fullWidth
-            slotProps={{ inputLabel: { shrink: true } }}
           />
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>

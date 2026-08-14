@@ -43,13 +43,25 @@ const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen,
   onClose,
 }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { mode, toggleMode } = useThemeMode();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const config = user?.moduleConfig;
+
+  React.useEffect(() => {
+    const handlePermissionsUpdate = () => {
+      refreshUser();
+    };
+    window.addEventListener("permissions_updated", handlePermissionsUpdate);
+    window.addEventListener("ai_mutation_success", handlePermissionsUpdate);
+    return () => {
+      window.removeEventListener("permissions_updated", handlePermissionsUpdate);
+      window.removeEventListener("ai_mutation_success", handlePermissionsUpdate);
+    };
+  }, [refreshUser]);
 
   const navItems = [
     {
@@ -150,7 +162,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             "M"}
         </Avatar>
         <Box sx={{ overflow: "hidden", flex: 1 }}>
-          <Typography variant="body2" fontWeight={600} noWrap>
+          <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
             {user?.businessName || "My Business"}
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap>

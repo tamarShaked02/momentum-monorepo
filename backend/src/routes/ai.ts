@@ -60,9 +60,14 @@ router.post(
       }
 
       if (interpretResult.type === "clarification" && interpretResult.clarification) {
+        const isFallbackError =
+          interpretResult.clarification.message.includes("high demand") ||
+          interpretResult.clarification.message.includes("experiencing exceptionally high demand") ||
+          interpretResult.clarification.message.includes("try your request again");
+
         res.json({
-          success: true,
-          type: "clarification",
+          success: !isFallbackError,
+          type: isFallbackError ? "error" : "clarification",
           message: interpretResult.clarification.message,
         });
         return;

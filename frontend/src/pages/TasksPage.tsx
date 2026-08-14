@@ -15,6 +15,7 @@ import {
   Fade,
   IconButton,
 } from "@mui/material";
+import DatePickerInput from "../components/calendar/DatePickerInput";
 import { Add, CheckCircle, Delete } from "@mui/icons-material";
 import {
   DndContext,
@@ -66,7 +67,7 @@ const TaskCard: React.FC<{
       {...attributes}
       {...listeners}
       sx={{
-        borderRadius: 2,
+        borderRadius: 1,
         cursor: "grab",
         flexShrink: 0,
         opacity: isDragging && !overlay ? 0.3 : 1,
@@ -202,7 +203,7 @@ const DroppableColumn: React.FC<{
         ref={setNodeRef}
         sx={{
           flex: 1,
-          borderRadius: 2,
+          borderRadius: 1,
           background: isOver
             ? "rgba(79,195,247,0.06)"
             : "rgba(255,255,255,0.02)",
@@ -276,6 +277,15 @@ const TasksPage: React.FC = () => {
 
   useEffect(() => {
     fetchTasks();
+    const handleRefresh = () => fetchTasks();
+    window.addEventListener("ai_mutation_success", handleRefresh);
+    window.addEventListener("tasks-updated", handleRefresh);
+    window.addEventListener("data-updated", handleRefresh);
+    return () => {
+      window.removeEventListener("ai_mutation_success", handleRefresh);
+      window.removeEventListener("tasks-updated", handleRefresh);
+      window.removeEventListener("data-updated", handleRefresh);
+    };
   }, []);
 
   const handleCreate = async () => {
@@ -473,21 +483,13 @@ const TasksPage: React.FC = () => {
                 placeholder="e.g., operational"
               />
             </Box>
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ mb: 0.5, display: "block", pl: 0.5 }}
-              >
-                Due Date
-              </Typography>
-              <TextField
-                type="date"
+              <DatePickerInput
+                label="Due Date"
                 value={form.dueDate}
-                onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                onChange={(val) => setForm({ ...form, dueDate: val })}
+                type="date"
                 fullWidth
               />
-            </Box>
           </DialogContent>
           <DialogActions sx={{ p: 3 }}>
             <Button onClick={() => setDialogOpen(false)}>Cancel</Button>

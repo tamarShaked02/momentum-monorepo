@@ -28,7 +28,7 @@ const DashboardPage: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchSummary = React.useCallback(() => {
     api
       .get("/dashboard/summary")
       .then((res) => {
@@ -37,6 +37,27 @@ const DashboardPage: React.FC = () => {
       })
       .catch(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchSummary();
+    const handleRefresh = () => fetchSummary();
+    window.addEventListener("ai_mutation_success", handleRefresh);
+    window.addEventListener("data-updated", handleRefresh);
+    return () => {
+      window.removeEventListener("ai_mutation_success", handleRefresh);
+      window.removeEventListener("data-updated", handleRefresh);
+    };
+  }, [fetchSummary]);
+
+  const handleTaskComplete = async (taskId: string) => {
+    try {
+      await api.put(`/tasks/${taskId}`, { status: "done" });
+      const res = await api.get("/dashboard/summary");
+      setData(res.data);
+    } catch (e) {
+      console.error("Failed to complete task from dashboard:", e);
+    }
+  };
 
   if (loading) {
     return (
@@ -312,15 +333,15 @@ const DashboardPage: React.FC = () => {
                         <Checkbox
                           size="small"
                           sx={{ p: 0.5, mr: 1, color: "rgba(255,255,255,0.3)" }}
-                          disabled
+                          onChange={() => handleTaskComplete(task.id)}
                         />
                         <ListItemText
                           primary={task.title}
                           slotProps={{
                             primary: {
+                              noWrap: true,
                               sx: {
                                 fontSize: "0.875rem",
-                                noWrap: true,
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                                 whiteSpace: "nowrap",

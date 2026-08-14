@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import api from '../api/client';
 import type { User } from '../types';
 
@@ -38,6 +38,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } else {
       setIsLoading(false);
     }
+  }, [token]);
+
+  useEffect(() => {
+    const handlePermissionsUpdate = () => {
+      if (token) {
+        refreshUser();
+      }
+    };
+
+    window.addEventListener('permissions_updated', handlePermissionsUpdate);
+    window.addEventListener('ai_mutation_success', handlePermissionsUpdate);
+    return () => {
+      window.removeEventListener('permissions_updated', handlePermissionsUpdate);
+      window.removeEventListener('ai_mutation_success', handlePermissionsUpdate);
+    };
   }, [token]);
 
   const login = async (email: string, password: string) => {

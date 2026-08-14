@@ -14,6 +14,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { Delete, Close } from "@mui/icons-material";
+import DatePickerInput from "./DatePickerInput";
 
 export interface AppointmentFormData {
   title: string;
@@ -197,43 +198,25 @@ const AppointmentDialog: React.FC<AppointmentDialogProps> = ({
           isOptionEqualToValue={(option, value) => option.id === value.id}
         />
 
-        <Box>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ mb: 0.5, display: "block", pl: 0.5 }}
-          >
-            Start Time *
-          </Typography>
-          <TextField
-            type="datetime-local"
-            value={form.startTime}
-            onChange={(e) => setForm({ ...form, startTime: e.target.value })}
-            fullWidth
-            required
-            error={!!errors.startTime}
-            helperText={errors.startTime}
-          />
-        </Box>
+        <DatePickerInput
+          label="Start Time *"
+          value={form.startTime}
+          onChange={(val) => setForm({ ...form, startTime: val })}
+          type="datetime-local"
+          required
+          error={!!errors.startTime}
+          helperText={errors.startTime}
+        />
 
-        <Box>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ mb: 0.5, display: "block", pl: 0.5 }}
-          >
-            End Time *
-          </Typography>
-          <TextField
-            type="datetime-local"
-            value={form.endTime}
-            onChange={(e) => setForm({ ...form, endTime: e.target.value })}
-            fullWidth
-            required
-            error={!!errors.endTime}
-            helperText={errors.endTime}
-          />
-        </Box>
+        <DatePickerInput
+          label="End Time *"
+          value={form.endTime}
+          onChange={(val) => setForm({ ...form, endTime: val })}
+          type="datetime-local"
+          required
+          error={!!errors.endTime}
+          helperText={errors.endTime}
+        />
 
         {mode === "edit" && (
           <TextField

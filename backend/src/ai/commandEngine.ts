@@ -1,5 +1,6 @@
 import { functionRegistry } from "./functionRegistry.js";
 import { createConfirmationToken, validateConfirmationToken } from "./confirmationManager.js";
+import { withAutoProvisioning } from "./autoProvisioner.js";
 import { ZodError } from "zod";
 
 export interface CommandResult {
@@ -83,14 +84,140 @@ export const commandEngine = {
       };
     }
 
-    // Execute handler
+    // Execute handler with auto-provisioning
     try {
-      const resultData = await definition.handler(parameters, userId);
+      const moduleName = definition.module || "general";
+      const { result: resultData, systemNote } = await withAutoProvisioning(
+        moduleName,
+        userId,
+        () => definition.handler(parameters, userId)
+      );
+
+      let message = `Successfully executed ${action}.`;
+      if (action === "update_inventory_quantity" || action === "update_inventory") {
+        const qty = resultData?.quantity ?? parameters.quantity;
+        const name = resultData?.name ?? parameters.itemName ?? "item";
+        message = `Successfully updated stock for ${name} (Quantity: ${qty}).`;
+      } else if (action === "create_inventory_item" || action === "add_inventory_item") {
+        const name = resultData?.name ?? parameters.name;
+        const qty = resultData?.quantity ?? parameters.quantity ?? 0;
+        message = `Successfully added ${qty > 0 ? qty + " " : ""}${name} to inventory.`;
+      } else if (action === "create_task") {
+        const title = resultData?.title ?? parameters.title;
+        message = `Successfully created task: "${title}".`;
+      } else if (action === "update_task_status" || action === "complete_task") {
+        const title = resultData?.title ?? parameters.taskTitle ?? "Task";
+        const status = resultData?.status ?? parameters.status ?? "done";
+        message = `Successfully updated task "${title}" status to ${status}.`;
+      } else if (action === "create_appointment" || action === "book_appointment" || action === "book_slot") {
+        const title = resultData?.title ?? parameters.title;
+        const date = parameters.date || "scheduled date";
+        message = `Successfully booked appointment "${title}" for ${date}.`;
+      } else if (action === "create_contact" || action === "add_customer") {
+        const name = resultData?.name ?? parameters.name;
+        message = `Successfully created contact: ${name}.`;
+      } else if (action === "update_deal_stage" || action === "move_deal") {
+        const title = resultData?.title ?? parameters.dealTitle ?? "Deal";
+        const stage = resultData?.stage?.name ?? parameters.targetStage;
+        message = `Successfully moved deal "${title}" to stage "${stage}".`;
+      } else if (action === "create_marketing_campaign" || action === "create_campaign") {
+        const name = resultData?.name ?? parameters.name;
+        message = `Successfully created marketing campaign: "${name}".`;
+      } else if (action === "update_campaign_status") {
+        const name = resultData?.name ?? parameters.campaignName ?? "Campaign";
+        const status = resultData?.status ?? parameters.status;
+        message = `Successfully updated campaign "${name}" status to ${status}.`;
+      } else if (action === "get_inventory_status") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No matching inventory items found.";
+        } else {
+          const itemSummary = resultData.map((i: any) => `${i.name}: ${i.quantity} in stock`).join(", ");
+          message = `Inventory Status: ${itemSummary}.`;
+        }
+      } else if (action === "get_pending_tasks") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No pending tasks found.";
+        } else {
+          const taskSummary = resultData.map((t: any) => `"${t.title}" (${t.priority || "medium"} priority)`).join(", ");
+          message = `Pending Tasks (${resultData.length}): ${taskSummary}.`;
+        }
+      } else if (action === "get_crm_summary") {
+        const contactCount = resultData?.totalContacts ?? 0;
+        const dealCount = resultData?.totalDeals ?? 0;
+        message = `CRM Summary: ${contactCount} contact(s) and ${dealCount} deal(s) found.`;
+      } else if (action === "get_marketing_campaigns") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No marketing campaigns found.";
+        } else {
+          const campaignSummary = resultData.map((c: any) => `"${c.name}" (${c.status})`).join(", ");
+          message = `Marketing Campaigns (${resultData.length}): ${campaignSummary}.`;
+        }
+      } else if (action === "get_financial_summary" || action === "get_monthly_profit") {
+        const profit = resultData?.monthlyProfit ?? 0;
+        const revenue = resultData?.monthlyRevenue ?? 0;
+        message = `Your monthly profit is $${profit.toLocaleString()} (Total Revenue: $${revenue.toLocaleString()}).`;
+      } else if (action === "get_schedule") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No appointments found in your schedule.";
+        } else {
+          const apptSummary = resultData.map((a: any) => `"${a.title}" with ${a.customerName} (${a.status})`).join(", ");
+          message = `Schedule (${resultData.length}): ${apptSummary}.`;
+        }
+      } else if (action === "get_customers") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No matching customers found.";
+        } else {
+          const custSummary = resultData.map((c: any) => `${c.name} (${c.email || "no email"})`).join(", ");
+          message = `Customers (${resultData.length}): ${custSummary}.`;
+        }
+      } else if (action === "get_pipeline_deals") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No sales deals found.";
+        } else {
+          const dealSummary = resultData.map((d: any) => `"${d.title}" ($${d.value || 0}, Stage: ${d.stage})`).join(", ");
+          message = `Pipeline Deals (${resultData.length}): ${dealSummary}.`;
+        }
+      } else if (action === "create_customer") {
+        const name = resultData?.name ?? parameters.name;
+        message = `Successfully created customer: ${name}.`;
+      } else if (action === "get_campaigns") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No marketing campaigns found.";
+        } else {
+          const campSummary = resultData.map((c: any) => `"${c.name}" (${c.status})`).join(", ");
+          message = `Marketing Campaigns (${resultData.length}): ${campSummary}.`;
+        }
+      } else if (action === "create_campaign") {
+        const name = resultData?.name ?? parameters.name;
+        message = `Successfully created marketing campaign: "${name}".`;
+      } else if (action === "get_tasks") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No tasks found.";
+        } else {
+          const taskSummary = resultData.map((t: any) => `"${t.title}" (${t.status})`).join(", ");
+          message = `Tasks (${resultData.length}): ${taskSummary}.`;
+        }
+      } else if (action === "update_stock_quantity") {
+        const qty = resultData?.quantity ?? parameters.quantity;
+        const name = resultData?.name ?? parameters.itemName ?? "item";
+        message = `Successfully updated stock quantity for ${name} (Quantity: ${qty}).`;
+      } else if (action === "get_business_analytics") {
+        const rev = resultData?.revenueSummary?.totalRevenue ?? 0;
+        const prof = resultData?.revenueSummary?.netProfit ?? 0;
+        const cap = resultData?.bookingCapacity?.capacityPercentage ?? 0;
+        const lowCount = resultData?.inventoryTrends?.lowStockCount ?? 0;
+        message = `Business Analytics: Revenue: $${rev.toLocaleString()}, Net Profit: $${prof.toLocaleString()}, Booking Capacity: ${cap}%, Low Stock Items: ${lowCount}.`;
+      }
+
+      if (systemNote) {
+        message += ` ${systemNote}`;
+      }
+
       return {
         success: true,
         type: "result",
         data: resultData,
-        message: `Successfully executed ${action}.`,
+        message,
       };
     } catch (handlerErr: any) {
       console.error(`Handler execution error for ${action}:`, handlerErr);

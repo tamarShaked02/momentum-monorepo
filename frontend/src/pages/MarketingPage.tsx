@@ -68,6 +68,15 @@ const MarketingPage: React.FC = () => {
 
   useEffect(() => {
     if (tab === 1) fetchCampaigns();
+    const handleRefresh = () => fetchCampaigns();
+    window.addEventListener("ai_mutation_success", handleRefresh);
+    window.addEventListener("marketing-updated", handleRefresh);
+    window.addEventListener("data-updated", handleRefresh);
+    return () => {
+      window.removeEventListener("ai_mutation_success", handleRefresh);
+      window.removeEventListener("marketing-updated", handleRefresh);
+      window.removeEventListener("data-updated", handleRefresh);
+    };
   }, [tab]);
 
   const handleGenerate = async () => {
