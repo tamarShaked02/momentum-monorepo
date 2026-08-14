@@ -1676,4 +1676,71 @@ registryFunctions.set("get_marketing_campaigns", {
   },
 });
 
+const getFinancialSummaryHandler = async (params: any, userId: string) => {
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const wonDeals = await prisma.deal.findMany({
+    where: {
+      userId,
+      status: { equals: "won", mode: "insensitive" },
+      updatedAt: { gte: startOfMonth },
+    },
+  });
+
+  const allWonDeals = await prisma.deal.findMany({
+    where: {
+      userId,
+      status: { equals: "won", mode: "insensitive" },
+    },
+  });
+
+  const completedAppointments = await prisma.appointment.findMany({
+    where: {
+      userId,
+      status: { equals: "completed", mode: "insensitive" },
+    },
+  });
+
+  const monthlyDealRevenue = wonDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+  const totalDealRevenue = allWonDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+  const appointmentRevenue = completedAppointments.reduce((sum, a) => sum + (a.price || 0), 0);
+
+  const monthlyRevenue = monthlyDealRevenue || totalDealRevenue || appointmentRevenue || 0;
+  const monthlyExpenses = 0;
+  const monthlyProfit = monthlyRevenue - monthlyExpenses;
+
+  return {
+    monthlyRevenue,
+    monthlyProfit,
+    monthlyExpenses,
+    totalDealsWon: wonDeals.length || allWonDeals.length,
+    completedAppointmentsCount: completedAppointments.length,
+    currency: "USD",
+  };
+};
+
+registryFunctions.set("get_financial_summary", {
+  action: "get_financial_summary",
+  module: "analytics",
+  description: "Use this tool to calculate and fetch raw financial numbers (like revenue, profit, or sales) when the user asks about their income. Use this to provide a direct numerical answer. DO NOT use export tools unless the user explicitly types 'export'.",
+  classification: "read",
+  parameters: z.object({
+    period: z.string().optional().describe("Time period such as 'monthly', 'quarterly', 'yearly'"),
+  }),
+  handler: getFinancialSummaryHandler,
+});
+
+registryFunctions.set("get_monthly_profit", {
+  action: "get_monthly_profit",
+  module: "analytics",
+  description: "Use this tool to calculate and fetch raw financial numbers (like revenue, profit, or sales) when the user asks about their income. Use this to provide a direct numerical answer. DO NOT use export tools unless the user explicitly types 'export'.",
+  classification: "read",
+  parameters: z.object({
+    period: z.string().optional().describe("Time period such as 'monthly'"),
+  }),
+  handler: getFinancialSummaryHandler,
+});
+
 

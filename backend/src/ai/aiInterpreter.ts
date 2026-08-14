@@ -233,6 +233,24 @@ function regexFallback(command: string): InterpretResult {
     };
   }
 
+  // Read Q&A: Financial summary / monthly profit / revenue / income
+  if (
+    lower.includes("profit") ||
+    lower.includes("revenue") ||
+    lower.includes("financial") ||
+    lower.includes("income") ||
+    lower.includes("earnings") ||
+    lower.includes("sales total")
+  ) {
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "get_financial_summary",
+        parameters: { period: "monthly" },
+      },
+    };
+  }
+
   // List tasks: list tasks, show tasks
   if (lower.includes("tasks") || lower.includes("task")) {
     return {
@@ -246,7 +264,7 @@ function regexFallback(command: string): InterpretResult {
 
   return {
     type: "unknown",
-    unknownMessage: "I'm not sure how to help with that. Try asking 'How many fabrics are in stock?' or 'What are my pending tasks?'.",
+    unknownMessage: "I'm not sure how to help with that. Try asking 'What is my monthly profit?' or 'How many fabrics are in stock?'.",
   };
 }
 
@@ -304,7 +322,7 @@ export async function interpretCommand(command: string, userId: string): Promise
       model: "gemini-flash-latest",
       tools: [{ functionDeclarations: declarations }],
       systemInstruction:
-        "You are an active operational growth AI assistant for a business management platform. System modules (such as Marketing, CRM, Inventory, Tasks, Scheduling, and Analytics) are automatically unlocked and provisioned for the user whenever they request an action. You MUST use function tools for BOTH active mutations and data queries. For questions like 'How many fabrics are in stock?', 'What are my pending tasks?', 'Show my active campaigns', or 'CRM summary', call the read-only retrieval tools (`get_inventory_status`, `get_pending_tasks`, `get_crm_summary`, `get_marketing_campaigns`). Return clear, helpful, conversational answers based directly on the raw database results.",
+        "You are an active operational growth AI assistant for a business management platform. System modules (such as Marketing, CRM, Inventory, Tasks, Scheduling, and Analytics) are automatically unlocked and provisioned for the user whenever they request an action. You MUST use function tools for BOTH active mutations and data queries. For questions like 'How many fabrics are in stock?', 'What are my pending tasks?', 'Show my active campaigns', or 'CRM summary', call the read-only retrieval tools (`get_inventory_status`, `get_pending_tasks`, `get_crm_summary`, `get_marketing_campaigns`, `get_financial_summary`). Return clear, helpful, conversational answers based directly on the raw database results. When asked about financial metrics, revenue, or profit, ALWAYS respond with a short, bottom-line numerical answer in the chat message. Do not generate or export reports unless explicitly requested.",
       toolConfig: {
         functionCallingConfig: {
           mode: FunctionCallingMode.AUTO,

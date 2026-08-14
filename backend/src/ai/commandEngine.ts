@@ -152,6 +152,10 @@ export const commandEngine = {
           const campaignSummary = resultData.map((c: any) => `"${c.name}" (${c.status})`).join(", ");
           message = `Marketing Campaigns (${resultData.length}): ${campaignSummary}.`;
         }
+      } else if (action === "get_financial_summary" || action === "get_monthly_profit") {
+        const profit = resultData?.monthlyProfit ?? 0;
+        const revenue = resultData?.monthlyRevenue ?? 0;
+        message = `Your monthly profit is $${profit.toLocaleString()} (Total Revenue: $${revenue.toLocaleString()}).`;
       }
 
       if (systemNote) {
