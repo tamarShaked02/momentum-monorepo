@@ -31,6 +31,18 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
+  const isFallbackOrError = (resData: any) => {
+    if (!resData || resData.success === false || resData.type === "error" || resData.type === "unknown") {
+      return true;
+    }
+    const msg = resData.message || "";
+    return (
+      msg.includes("high demand") ||
+      msg.includes("experiencing exceptionally high demand") ||
+      msg.includes("try your request again")
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!command.trim() || loading) return;
@@ -38,10 +50,18 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
     setLoading(true);
     try {
       const res = await api.post("/ai/command", { command: command.trim() });
-      setResult(res.data);
+      const failed = isFallbackOrError(res.data);
+      const formattedResult = {
+        ...res.data,
+        success: !failed && Boolean(res.data?.success),
+        type: failed ? "error" : (res.data?.type || "result"),
+      };
+
+      setResult(formattedResult);
       setShowResult(true);
       setCommand("");
-      if (res.data?.success) {
+
+      if (!failed && res.data?.success) {
         window.dispatchEvent(new CustomEvent("permissions_updated", { detail: res.data }));
         window.dispatchEvent(new CustomEvent("ai_mutation_success", { detail: res.data }));
         window.dispatchEvent(new Event("inventory-updated"));
@@ -62,8 +82,9 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
 
   const getResultMessage = () => {
     if (!result) return "";
-    if (result.type === "unknown" || result.type === "error" || !result.success)
+    if (isFallbackOrError(result)) {
       return result.message || "Something went wrong.";
+    }
     return `✅ ${result.message || "Action completed successfully"}`;
   };
 
