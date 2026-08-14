@@ -28,6 +28,20 @@ const getClient = () => {
 function regexFallback(command: string): InterpretResult {
   const lower = command.toLowerCase().trim();
 
+  // Expressions of NEED or future actions -> TASK (e.g. "I need to buy 2 threads", "Remind me to call John", "Need to get supplies")
+  const needTaskMatch = lower.match(/(?:i\s+need\s+to|need\s+to|remind\s+me\s+to|todo:?)\s+(.+)/i);
+  if (needTaskMatch) {
+    const rawTitle = needTaskMatch[1].trim();
+    const title = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "create_task",
+        parameters: { title },
+      },
+    };
+  }
+
   // Create marketing campaign: create campaign Summer Sale
   const campaignMatch = lower.match(/(?:create|new|start)\s+(?:marketing\s+)?campaign\s+(.+)/i);
   if (campaignMatch) {
@@ -322,7 +336,12 @@ export async function interpretCommand(command: string, userId: string): Promise
       model: "gemini-flash-latest",
       tools: [{ functionDeclarations: declarations }],
       systemInstruction:
-        "You are the central command AI for the business system. You have full read and write access to Scheduling, CRM, Marketing, Tasks, Inventory, and Analytics. When a user asks a question about their data, use the retrieval tools to fetch real data and answer concisely with bottom-line numbers. When a user requests an action, use the mutation tools to execute it and confirm success.",
+        "You are the central command AI for the business system. You have full read and write access to Scheduling, CRM, Marketing, Tasks, Inventory, and Analytics. When a user asks a question about their data, use the retrieval tools to fetch real data and answer concisely with bottom-line numbers. When a user requests an action, use the mutation tools to execute it and confirm success.\n\n" +
+        "CRITICAL INTENT ROUTING RULES:\n" +
+        "- If the user expresses a NEED or future action (e.g., 'I need to...', 'Remind me to...', 'Need to buy...'), this is a TASK. You MUST use the `create_task` tool.\n" +
+        "- If the user states they ALREADY bought or used an item (e.g., 'I bought 5 Shampoos', 'Used 2 Fabric'), this is an INVENTORY MUTATION. Use `update_stock_quantity`.\n" +
+        "- If the user asks 'Do I have...', 'How many...', or 'Check stock...', this is an INVENTORY SEARCH. Use `get_inventory_status`.\n\n" +
+        "CLARIFICATION RULE: If the user's request is ambiguous, or you are not 100% sure which tool to use, DO NOT guess and DO NOT execute any tool. Instead, respond naturally with a clarifying question (e.g., 'Did you want me to add this to your tasks or update the inventory?').",
       toolConfig: {
         functionCallingConfig: {
           mode: FunctionCallingMode.AUTO,

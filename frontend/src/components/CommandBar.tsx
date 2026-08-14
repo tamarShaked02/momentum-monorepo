@@ -85,6 +85,9 @@ const CommandBar: React.FC<CommandBarProps> = ({ onMenuClick }) => {
     if (isFallbackOrError(result)) {
       return result.message || "Something went wrong.";
     }
+    if (result.type === "clarification") {
+      return `💬 ${result.message}`;
+    }
     return `✅ ${result.message || "Action completed successfully"}`;
   };
 
