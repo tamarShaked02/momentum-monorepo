@@ -127,6 +127,31 @@ export const commandEngine = {
         const name = resultData?.name ?? parameters.campaignName ?? "Campaign";
         const status = resultData?.status ?? parameters.status;
         message = `Successfully updated campaign "${name}" status to ${status}.`;
+      } else if (action === "get_inventory_status") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No matching inventory items found.";
+        } else {
+          const itemSummary = resultData.map((i: any) => `${i.name}: ${i.quantity} in stock`).join(", ");
+          message = `Inventory Status: ${itemSummary}.`;
+        }
+      } else if (action === "get_pending_tasks") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No pending tasks found.";
+        } else {
+          const taskSummary = resultData.map((t: any) => `"${t.title}" (${t.priority || "medium"} priority)`).join(", ");
+          message = `Pending Tasks (${resultData.length}): ${taskSummary}.`;
+        }
+      } else if (action === "get_crm_summary") {
+        const contactCount = resultData?.totalContacts ?? 0;
+        const dealCount = resultData?.totalDeals ?? 0;
+        message = `CRM Summary: ${contactCount} contact(s) and ${dealCount} deal(s) found.`;
+      } else if (action === "get_marketing_campaigns") {
+        if (!Array.isArray(resultData) || resultData.length === 0) {
+          message = "No marketing campaigns found.";
+        } else {
+          const campaignSummary = resultData.map((c: any) => `"${c.name}" (${c.status})`).join(", ");
+          message = `Marketing Campaigns (${resultData.length}): ${campaignSummary}.`;
+        }
       }
 
       if (systemNote) {

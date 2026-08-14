@@ -187,12 +187,58 @@ function regexFallback(command: string): InterpretResult {
     };
   }
 
+  // Read Q&A: how many ... in stock / check stock / inventory status
+  if (lower.includes("in stock") || lower.includes("stock status") || lower.includes("how many") || lower.includes("inventory status")) {
+    const itemMatch = lower.match(/(?:how\s+many|check|stock\s+for|what\s+is\s+the\s+stock\s+of)\s+(.+?)(?:\s+(?:are\s+)?in\s+stock|\?|$)/i);
+    const itemName = itemMatch ? itemMatch[1].replace(/items?/gi, "").replace(/fabrics?/gi, "Fabric").trim() : undefined;
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "get_inventory_status",
+        parameters: itemName && !itemName.includes("inventory") ? { itemName } : {},
+      },
+    };
+  }
+
+  // Read Q&A: what are my pending tasks / show tasks
+  if (lower.includes("pending tasks") || lower.includes("my tasks") || lower.includes("what do i need to do")) {
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "get_pending_tasks",
+        parameters: { status: "pending" },
+      },
+    };
+  }
+
+  // Read Q&A: show campaigns / active campaigns / my campaigns
+  if (lower.includes("campaigns") || lower.includes("marketing campaign")) {
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "get_marketing_campaigns",
+        parameters: lower.includes("active") ? { status: "active" } : {},
+      },
+    };
+  }
+
+  // Read Q&A: CRM summary / show deals / show customers
+  if (lower.includes("crm") || lower.includes("customers") || lower.includes("deals")) {
+    return {
+      type: "function_call",
+      functionCall: {
+        action: "get_crm_summary",
+        parameters: {},
+      },
+    };
+  }
+
   // List tasks: list tasks, show tasks
   if (lower.includes("tasks") || lower.includes("task")) {
     return {
       type: "function_call",
       functionCall: {
-        action: "list_tasks",
+        action: "get_pending_tasks",
         parameters: {},
       },
     };
@@ -200,7 +246,7 @@ function regexFallback(command: string): InterpretResult {
 
   return {
     type: "unknown",
-    unknownMessage: "I'm not sure how to help with that. Try 'Create a marketing campaign Summer Sale' or 'Create a task Buy supplies'.",
+    unknownMessage: "I'm not sure how to help with that. Try asking 'How many fabrics are in stock?' or 'What are my pending tasks?'.",
   };
 }
 
@@ -220,7 +266,7 @@ export async function interpretCommand(command: string, userId: string): Promise
       model: "gemini-flash-latest",
       tools: [{ functionDeclarations: declarations }],
       systemInstruction:
-        "You are an active operational growth AI assistant for a business management platform. System modules (such as Marketing, CRM, Inventory, Tasks, Scheduling, and Analytics) are automatically unlocked and provisioned for the user whenever they request an action in a module that is not yet enabled. You MUST use function tools whenever a user requests an action (such as creating marketing campaigns, booking slots, adding inventory, managing tasks, or updating contacts/deals). If a tool response includes a system note that a module was unlocked, explicitly mention that the module was automatically unlocked to perform the action.",
+        "You are an active operational growth AI assistant for a business management platform. System modules (such as Marketing, CRM, Inventory, Tasks, Scheduling, and Analytics) are automatically unlocked and provisioned for the user whenever they request an action. You MUST use function tools for BOTH active mutations and data queries. For questions like 'How many fabrics are in stock?', 'What are my pending tasks?', 'Show my active campaigns', or 'CRM summary', call the read-only retrieval tools (`get_inventory_status`, `get_pending_tasks`, `get_crm_summary`, `get_marketing_campaigns`). Return clear, helpful, conversational answers based directly on the raw database results.",
       toolConfig: {
         functionCallingConfig: {
           mode: FunctionCallingMode.AUTO,

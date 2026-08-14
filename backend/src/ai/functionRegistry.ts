@@ -1535,4 +1535,145 @@ registryFunctions.set("update_campaign_status", {
   },
 });
 
+// ----------------------------------------
+// 9. Read-Only Data Retrieval Tools for Q&A
+// ----------------------------------------
+
+registryFunctions.set("get_inventory_status", {
+  action: "get_inventory_status",
+  module: "inventory",
+  description: "Get stock quantities and status for inventory items, optionally filtered by item name or category. Use when the user asks 'how many', 'what is the stock', or 'check inventory'.",
+  classification: "read",
+  parameters: z.object({
+    itemName: z.string().optional().describe("Filter by specific item name"),
+    category: z.string().optional().describe("Filter by inventory category"),
+  }),
+  handler: async (params, userId) => {
+    const where: any = { userId };
+    if (params.itemName) {
+      where.name = { contains: params.itemName, mode: "insensitive" };
+    }
+    if (params.category) {
+      where.category = { equals: params.category, mode: "insensitive" };
+    }
+    const items = await prisma.inventoryItem.findMany({ where });
+    return items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      lowThreshold: item.lowThreshold,
+      price: item.price,
+      category: item.category,
+      isLowStock: item.quantity <= item.lowThreshold,
+    }));
+  },
+});
+
+registryFunctions.set("get_pending_tasks", {
+  action: "get_pending_tasks",
+  module: "tasks",
+  description: "Retrieve list of pending or active tasks, optionally filtered by status or date range. Use when the user asks 'what are my tasks', 'show pending tasks', or 'what do I need to do'.",
+  classification: "read",
+  parameters: z.object({
+    status: z.enum(["pending", "in_progress", "done"]).optional().describe("Task status filter (default 'pending')"),
+    dueBefore: z.string().optional().describe("Filter tasks due before specific date"),
+  }),
+  handler: async (params, userId) => {
+    const where: any = { userId, status: params.status || "pending" };
+    if (params.dueBefore) {
+      where.dueDate = { lte: resolveRelativeDate(params.dueBefore) };
+    }
+    const tasks = await prisma.task.findMany({
+      where,
+      orderBy: { dueDate: "asc" },
+    });
+    return tasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      priority: t.priority,
+      status: t.status,
+      dueDate: t.dueDate ? t.dueDate.toISOString() : null,
+      category: t.category,
+    }));
+  },
+});
+
+registryFunctions.set("get_crm_summary", {
+  action: "get_crm_summary",
+  module: "crm",
+  description: "Get CRM summary including contacts, deals, and sales pipeline stage totals, optionally filtered by stage or contact name. Use when user asks 'how many customers', 'show my deals', or 'CRM summary'.",
+  classification: "read",
+  parameters: z.object({
+    contactName: z.string().optional().describe("Filter by contact name"),
+    stageName: z.string().optional().describe("Filter by pipeline stage name"),
+  }),
+  handler: async (params, userId) => {
+    const contactWhere: any = { userId };
+    if (params.contactName) {
+      contactWhere.name = { contains: params.contactName, mode: "insensitive" };
+    }
+    const contacts = await prisma.customer.findMany({
+      where: contactWhere,
+      take: 50,
+    });
+
+    const dealWhere: any = { userId };
+    if (params.stageName) {
+      dealWhere.stage = { name: { equals: params.stageName, mode: "insensitive" } };
+    }
+    const deals = await prisma.deal.findMany({
+      where: dealWhere,
+      include: { stage: true, contact: true },
+      take: 50,
+    });
+
+    return {
+      totalContacts: contacts.length,
+      contacts: contacts.map((c) => ({
+        id: c.id,
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        lifecycleStage: c.lifecycleStage,
+      })),
+      totalDeals: deals.length,
+      deals: deals.map((d) => ({
+        id: d.id,
+        title: d.title,
+        value: d.value,
+        status: d.status,
+        stage: d.stage?.name,
+      })),
+    };
+  },
+});
+
+registryFunctions.set("get_marketing_campaigns", {
+  action: "get_marketing_campaigns",
+  module: "marketing",
+  description: "List marketing campaigns with their channel, goal, and status, optionally filtered by status (draft, active, scheduled, completed, paused). Use when user asks 'show my campaigns', 'what active campaigns do I have', or 'campaign status'.",
+  classification: "read",
+  parameters: z.object({
+    status: z.enum(["draft", "active", "scheduled", "completed", "paused"]).optional().describe("Status filter for campaigns"),
+  }),
+  handler: async (params, userId) => {
+    const where: any = { userId };
+    if (params.status) {
+      where.status = params.status;
+    }
+    const campaigns = await prisma.marketingCampaign.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+    });
+    return campaigns.map((c) => ({
+      id: c.id,
+      name: c.name,
+      goal: c.goal,
+      status: c.status,
+      channels: c.channels,
+      createdAt: c.createdAt.toISOString(),
+    }));
+  },
+});
+
 
