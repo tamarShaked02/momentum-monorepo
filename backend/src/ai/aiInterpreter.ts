@@ -250,6 +250,43 @@ function regexFallback(command: string): InterpretResult {
   };
 }
 
+// Helper function for exponential backoff retries on transient 503 / 429 API errors
+async function sendMessageWithRetry(session: any, command: string): Promise<any> {
+  const maxRetries = 3;
+  const delays = [1000, 2000, 4000];
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const responsePromise = session.sendMessage(command);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout")), 15000)
+      );
+      return await Promise.race([responsePromise, timeoutPromise]);
+    } catch (error: any) {
+      const status = error?.status || error?.statusCode;
+      const msg = error?.message || "";
+      const isTransientError =
+        status === 503 ||
+        status === 429 ||
+        msg.includes("503") ||
+        msg.includes("429") ||
+        msg.includes("high demand") ||
+        msg.includes("overloaded") ||
+        msg.includes("Service Unavailable") ||
+        msg.includes("UNAVAILABLE");
+
+      if (isTransientError && attempt < maxRetries) {
+        const delay = delays[attempt] || 4000;
+        console.warn(`Gemini API 503/429 transient error (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+
+      throw error;
+    }
+  }
+}
+
 export async function interpretCommand(command: string, userId: string): Promise<InterpretResult> {
   if (env.USE_MOCK_AI) {
     return regexFallback(command);
@@ -281,13 +318,7 @@ export async function interpretCommand(command: string, userId: string): Promise
       },
     });
 
-    // We can run the command with a 15 second timeout limit
-    const responsePromise = session.sendMessage(command);
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout")), 15000)
-    );
-
-    const result = await Promise.race([responsePromise, timeoutPromise]);
+    const result = await sendMessageWithRetry(session, command);
     const functionCalls = result.response.functionCalls();
 
     if (functionCalls && functionCalls.length > 0) {
@@ -319,16 +350,17 @@ export async function interpretCommand(command: string, userId: string): Promise
     }
   } catch (error: any) {
     console.error("Gemini interpretation error:", error);
-    // If rate limit (429), retry once after 1s
-    if (error.status === 429 || error.message?.includes("429")) {
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        return await interpretCommand(command, userId);
-      } catch (retryError) {
-        console.error("Retry failed:", retryError);
-      }
+    // Attempt regex fallback if it matches a tool pattern
+    const fallbackResult = regexFallback(command);
+    if (fallbackResult.type === "function_call") {
+      return fallbackResult;
     }
-    // Fallback to regex on any error
-    return regexFallback(command);
+
+    return {
+      type: "clarification",
+      clarification: {
+        message: "The AI service is currently experiencing exceptionally high demand. Please try your request again in a minute.",
+      },
+    };
   }
 }
