@@ -1,9 +1,9 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# התקנת התלויות בלבד תחילה (לשיפור caching)
+# התקנת התלויות (נשתמש ב-npm install כיוון שאין package-lock.json בתיקייה)
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 # העתקת כל שאר הקבצים והגדרת כתובת ה-API הציבורית לבנייה
 COPY . .
