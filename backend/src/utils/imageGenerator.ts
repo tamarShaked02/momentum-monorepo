@@ -1,4 +1,5 @@
 export async function generateCampaignImage(prompt: string): Promise<string> {
-  const imageResult = 'https://placehold.co/600x400/png?text=Test+Image';
+  const encodedPrompt = encodeURIComponent(prompt);
+  const imageResult = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=400&nologo=true`;
   return imageResult;
 }
