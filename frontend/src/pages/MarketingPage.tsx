@@ -380,15 +380,21 @@ const MarketingPage: React.FC = () => {
               <Box>
                 <Box
                   sx={{
-                    display: "grid",
-                    gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" },
-                    alignItems: "flex-start",
-                    gap: 3,
+                    columns: { xs: 1, md: 2 },
+                    columnGap: 3,
                     mb: 3,
                   }}
                 >
                   {channels.includes("sms") && content.sms && (
-                    <Card sx={{ border: "1px solid rgba(255,183,77,0.3)" }}>
+                    <Card
+                      sx={{
+                        border: "1px solid rgba(255,183,77,0.3)",
+                        breakInside: "avoid",
+                        display: "inline-block",
+                        width: "100%",
+                        mb: 3,
+                      }}
+                    >
                       <CardContent>
                         <Box
                           sx={{
@@ -411,7 +417,15 @@ const MarketingPage: React.FC = () => {
                     </Card>
                   )}
                   {channels.includes("email") && content.email && (
-                    <Card sx={{ border: "1px solid rgba(79,195,247,0.3)" }}>
+                    <Card
+                      sx={{
+                        border: "1px solid rgba(79,195,247,0.3)",
+                        breakInside: "avoid",
+                        display: "inline-block",
+                        width: "100%",
+                        mb: 3,
+                      }}
+                    >
                       <CardContent>
                         <Box
                           sx={{
@@ -455,6 +469,10 @@ const MarketingPage: React.FC = () => {
                     <Card
                       sx={{
                         border: "1px solid rgba(186,104,200,0.3)",
+                        breakInside: "avoid",
+                        display: "inline-block",
+                        width: "100%",
+                        mb: 3,
                         overflow: "hidden",
                       }}
                     >
