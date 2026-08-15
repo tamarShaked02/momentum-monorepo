@@ -3,6 +3,7 @@ import { authMiddleware, AuthRequest } from "../middleware/auth.js";
 import { getPagination, paginatedResponse } from "../utils/pagination.js";
 import prisma from "../config/db.js";
 import { generateMarketingContent } from "../services/aiService.js";
+import { generateCampaignImage } from "../utils/imageGenerator.js";
 
 /**
  * @swagger
@@ -103,6 +104,8 @@ router.post(
         smsContent,
         emailContent,
         socialContent,
+        imageUrl: incomingImageUrl,
+        imagePrompt,
         scheduledAt,
         audienceTags,
         audienceLifecycleStages,
@@ -111,6 +114,13 @@ router.post(
         res.status(400).json({ error: "Campaign name is required." });
         return;
       }
+
+      let imageUrl = incomingImageUrl || null;
+      if (!imageUrl) {
+        const promptToUse = imagePrompt || `Promotional image artwork for ${name}${goal ? ` (${goal})` : ""}`;
+        imageUrl = await generateCampaignImage(promptToUse);
+      }
+
       const campaign = await prisma.marketingCampaign.create({
         data: {
           userId: req.userId!,
@@ -120,6 +130,7 @@ router.post(
           smsContent: smsContent || null,
           emailContent: emailContent || null,
           socialContent: socialContent || null,
+          imageUrl,
           audienceTags: audienceTags || [],
           audienceLifecycleStages: audienceLifecycleStages || [],
           scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
@@ -300,13 +311,47 @@ router.post(
   authMiddleware,
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const { brief, channels } = req.body;
+      const { brief, channels, saveToDb, name } = req.body;
       if (!brief) {
         res.status(400).json({ error: "Campaign brief is required." });
         return;
       }
-      const content = await generateMarketingContent(brief);
-      res.json(content);
+      const generated = await generateMarketingContent(brief);
+      const copy = generated.copy || {
+        sms: generated.sms,
+        email: generated.email,
+        social: generated.social,
+      };
+      const imagePrompt = generated.imagePrompt || `Promotional image artwork for: ${brief}`;
+
+      // Generate image visual asset
+      const imageUrl = await generateCampaignImage(imagePrompt);
+
+      let campaign = null;
+      if (saveToDb) {
+        campaign = await prisma.marketingCampaign.create({
+          data: {
+            userId: req.userId!,
+            name: name || `Campaign - ${new Date().toLocaleDateString()}`,
+            goal: brief,
+            channels: channels || ["email", "sms", "social"],
+            smsContent: copy.sms || null,
+            emailContent: typeof copy.email === "object" ? `${copy.email.subject}\n\n${copy.email.body}` : copy.email || null,
+            socialContent: copy.social || null,
+            imageUrl,
+          },
+        });
+      }
+
+      res.json({
+        copy,
+        imagePrompt,
+        imageUrl,
+        sms: copy.sms,
+        email: copy.email,
+        social: copy.social,
+        ...(campaign ? { campaign } : {}),
+      });
     } catch (error: any) {
       console.error("Marketing content generation route error:", error);
       const status = error?.status || error?.statusCode || 503;
