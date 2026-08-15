@@ -857,6 +857,25 @@ registryFunctions.set("delete_task", {
   },
 });
 
+async function generateCampaignImage(prompt: string): Promise<string> {
+  const cleanPrompt = prompt.replace(/["<>&]/g, "").slice(0, 100);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+    <defs>
+      <linearGradient id="campaignGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#4F46E5" />
+        <stop offset="50%" stop-color="#7C3AED" />
+        <stop offset="100%" stop-color="#EC4899" />
+      </linearGradient>
+    </defs>
+    <rect width="1024" height="1024" fill="url(#campaignGrad)" />
+    <circle cx="512" cy="420" r="180" fill="#FFFFFF" opacity="0.15" />
+    <text x="512" y="440" font-family="system-ui, sans-serif" font-size="40" font-weight="bold" fill="#FFFFFF" text-anchor="middle">Campaign Visual Asset</text>
+    <text x="512" y="510" font-family="system-ui, sans-serif" font-size="22" fill="#E0E7FF" text-anchor="middle">${cleanPrompt}</text>
+  </svg>`;
+  const base64 = Buffer.from(svg).toString("base64");
+  return `data:image/svg+xml;base64,${base64}`;
+}
+
 // ----------------------------------------
 // 5. Marketing Module Functions
 // ----------------------------------------
@@ -864,26 +883,70 @@ registryFunctions.set("delete_task", {
 registryFunctions.set("create_campaign", {
   action: "create_campaign",
   module: "marketing",
-  description: "Create a marketing campaign.",
+  description: "When creating a campaign, always generate the marketing copy and provide a detailed visual `image_prompt` describing the accompanying image.",
   classification: "write",
   parameters: z.object({
-    name: z.string().describe("Campaign name"),
-    goal: z.string().describe("Target goal of the campaign"),
+    name: z.string().describe("Name of the marketing campaign"),
+    image_prompt: z.string().describe("Detailed visual image_prompt describing the accompanying image"),
+    goal: z.string().optional().describe("Target goal of the campaign"),
+    targetAudience: z.string().optional().describe("Target audience description"),
     channel: z.enum(["sms", "email", "social"]).optional().describe("Campaign marketing channel"),
+    type: z.enum(["email", "sms", "social"]).optional().describe("Campaign marketing channel or type"),
+    generateAIContent: z.boolean().optional().describe("Generate email/SMS/social copy with GenAI"),
+    status: z.enum(["draft", "active", "scheduled", "completed", "paused"]).optional().describe("Status of the campaign"),
     audienceTags: z.array(z.string()).optional().describe("Tags defining targeting audience"),
     audienceStages: z.array(z.string()).optional().describe("Lifecycle stages defining targeting audience"),
   }),
   handler: async (params, userId) => {
-    return await prisma.marketingCampaign.create({
+    const imagePrompt = params.image_prompt;
+    const imageUrl = await generateCampaignImage(imagePrompt);
+
+    const goal = params.goal || params.targetAudience || params.name;
+    const emailContent = `Subject: Exclusive offer for ${params.name}!\n\nHello! Check out our latest updates regarding ${goal} tailored just for you.`;
+    const smsContent = `Special offer: ${params.name}! ${goal}. Don't miss out. Reply STOP to opt out.`;
+    const socialContent = `🚀 Exciting news! Announcing ${params.name}. ${goal}! Tap link in bio to learn more! #momentum #${params.name.replace(/\s+/g, '')}`;
+
+    const channelList = params.type ? [params.type] : params.channel ? [params.channel] : ["email", "sms", "social"];
+
+    const campaign = await prisma.marketingCampaign.create({
       data: {
         userId,
         name: params.name,
-        goal: params.goal,
-        channels: params.channel ? [params.channel] : [],
+        goal,
+        channels: channelList,
+        status: params.status || "draft",
+        emailContent,
+        smsContent,
+        socialContent,
+        imageUrl,
         audienceTags: params.audienceTags || [],
         audienceLifecycleStages: params.audienceStages || [],
       },
     });
+
+    return {
+      id: campaign.id,
+      name: campaign.name,
+      goal: campaign.goal,
+      status: campaign.status,
+      channels: campaign.channels,
+      emailContent: campaign.emailContent,
+      smsContent: campaign.smsContent,
+      socialContent: campaign.socialContent,
+      imageUrl: campaign.imageUrl,
+      imagePrompt,
+      generatedTextCopy: {
+        email: emailContent,
+        sms: smsContent,
+        social: socialContent,
+      },
+      visualAsset: {
+        prompt: imagePrompt,
+        imageUrl,
+        status: "generated",
+      },
+      message: `Campaign "${campaign.name}" created successfully with both post copy and visual asset (${imagePrompt}).`,
+    };
   },
 });
 
@@ -1961,38 +2024,70 @@ registryFunctions.set("get_campaigns", {
 registryFunctions.set("create_campaign", {
   action: "create_campaign",
   module: "marketing",
-  description: "Create a new marketing campaign supporting email, SMS, or social channels. Can trigger GenAI content generation if requested.",
+  description: "When creating a campaign, always generate the marketing copy and provide a detailed visual `image_prompt` describing the accompanying image.",
   classification: "write",
   parameters: z.object({
     name: z.string().describe("Name of the marketing campaign"),
+    image_prompt: z.string().describe("Detailed visual image_prompt describing the accompanying image"),
+    goal: z.string().optional().describe("Target goal of the campaign"),
+    targetAudience: z.string().optional().describe("Target audience description"),
+    channel: z.enum(["sms", "email", "social"]).optional().describe("Campaign marketing channel"),
     type: z.enum(["email", "sms", "social"]).optional().describe("Campaign marketing channel or type"),
-    targetAudience: z.string().optional().describe("Target audience description or campaign goal"),
     generateAIContent: z.boolean().optional().describe("Generate email/SMS/social copy with GenAI"),
     status: z.enum(["draft", "active", "scheduled", "completed", "paused"]).optional().describe("Status of the campaign"),
+    audienceTags: z.array(z.string()).optional().describe("Tags defining targeting audience"),
+    audienceStages: z.array(z.string()).optional().describe("Lifecycle stages defining targeting audience"),
   }),
   handler: async (params, userId) => {
-    let emailContent: string | null = null;
-    let smsContent: string | null = null;
-    let socialContent: string | null = null;
+    const imagePrompt = params.image_prompt;
+    const imageUrl = await generateCampaignImage(imagePrompt);
 
-    if (params.generateAIContent) {
-      emailContent = `Subject: Exclusive offer for ${params.name}!\n\nHello! Check out our latest updates tailored just for you.`;
-      smsContent = `Special offer: ${params.name}! Don't miss out. Reply STOP to opt out.`;
-      socialContent = `🚀 Exciting news! Announcing ${params.name}. Tap link in bio to learn more! #momentum`;
-    }
+    const goal = params.goal || params.targetAudience || params.name;
+    const emailContent = `Subject: Exclusive offer for ${params.name}!\n\nHello! Check out our latest updates regarding ${goal} tailored just for you.`;
+    const smsContent = `Special offer: ${params.name}! ${goal}. Don't miss out. Reply STOP to opt out.`;
+    const socialContent = `🚀 Exciting news! Announcing ${params.name}. ${goal}! Tap link in bio to learn more! #momentum #${params.name.replace(/\s+/g, '')}`;
 
-    return await prisma.marketingCampaign.create({
+    const channelList = params.type ? [params.type] : params.channel ? [params.channel] : ["email", "sms", "social"];
+
+    const campaign = await prisma.marketingCampaign.create({
       data: {
         userId,
         name: params.name,
-        goal: params.targetAudience || null,
-        channels: params.type ? [params.type] : ["email"],
+        goal,
+        channels: channelList,
         status: params.status || "draft",
         emailContent,
         smsContent,
         socialContent,
+        imageUrl,
+        audienceTags: params.audienceTags || [],
+        audienceLifecycleStages: params.audienceStages || [],
       },
     });
+
+    return {
+      id: campaign.id,
+      name: campaign.name,
+      goal: campaign.goal,
+      status: campaign.status,
+      channels: campaign.channels,
+      emailContent: campaign.emailContent,
+      smsContent: campaign.smsContent,
+      socialContent: campaign.socialContent,
+      imageUrl: campaign.imageUrl,
+      imagePrompt,
+      generatedTextCopy: {
+        email: emailContent,
+        sms: smsContent,
+        social: socialContent,
+      },
+      visualAsset: {
+        prompt: imagePrompt,
+        imageUrl,
+        status: "generated",
+      },
+      message: `Campaign "${campaign.name}" created successfully with both post copy and visual asset (${imagePrompt}).`,
+    };
   },
 });
 

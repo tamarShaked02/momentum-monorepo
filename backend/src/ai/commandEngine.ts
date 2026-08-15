@@ -122,7 +122,7 @@ export const commandEngine = {
         message = `Successfully moved deal "${title}" to stage "${stage}".`;
       } else if (action === "create_marketing_campaign" || action === "create_campaign") {
         const name = resultData?.name ?? parameters.name;
-        message = `Successfully created marketing campaign: "${name}".`;
+        message = resultData?.message || `Successfully created marketing campaign "${name}" with generated post copy and accompanying visual asset.`;
       } else if (action === "update_campaign_status") {
         const name = resultData?.name ?? parameters.campaignName ?? "Campaign";
         const status = resultData?.status ?? parameters.status;
@@ -189,7 +189,7 @@ export const commandEngine = {
         }
       } else if (action === "create_campaign") {
         const name = resultData?.name ?? parameters.name;
-        message = `Successfully created marketing campaign: "${name}".`;
+        message = resultData?.message || `Successfully created marketing campaign "${name}" with generated post copy and accompanying visual asset.`;
       } else if (action === "get_tasks") {
         if (!Array.isArray(resultData) || resultData.length === 0) {
           message = "No tasks found.";

@@ -45,11 +45,15 @@ function regexFallback(command: string): InterpretResult {
   // Create marketing campaign: create campaign Summer Sale
   const campaignMatch = lower.match(/(?:create|new|start)\s+(?:marketing\s+)?campaign\s+(.+)/i);
   if (campaignMatch) {
+    const campaignName = campaignMatch[1].trim();
     return {
       type: "function_call",
       functionCall: {
-        action: "create_marketing_campaign",
-        parameters: { name: campaignMatch[1].trim() },
+        action: "create_campaign",
+        parameters: {
+          name: campaignName,
+          image_prompt: `High quality marketing visual asset for ${campaignName}`,
+        },
       },
     };
   }
@@ -340,7 +344,8 @@ export async function interpretCommand(command: string, userId: string): Promise
         "CRITICAL INTENT ROUTING RULES:\n" +
         "- If the user expresses a NEED or future action (e.g., 'I need to...', 'Remind me to...', 'Need to buy...'), this is a TASK. You MUST use the `create_task` tool.\n" +
         "- If the user states they ALREADY bought or used an item (e.g., 'I bought 5 Shampoos', 'Used 2 Fabric'), this is an INVENTORY MUTATION. Use `update_stock_quantity`.\n" +
-        "- If the user asks 'Do I have...', 'How many...', or 'Check stock...', this is an INVENTORY SEARCH. Use `get_inventory_status`.\n\n" +
+        "- If the user asks 'Do I have...', 'How many...', or 'Check stock...', this is an INVENTORY SEARCH. Use `get_inventory_status`.\n" +
+        "- When creating a campaign, always generate the marketing copy and provide a detailed visual `image_prompt` describing the accompanying image.\n\n" +
         "CLARIFICATION RULE: If the user's request is ambiguous, or you are not 100% sure which tool to use, DO NOT guess and DO NOT execute any tool. Instead, respond naturally with a clarifying question (e.g., 'Did you want me to add this to your tasks or update the inventory?').",
       toolConfig: {
         functionCallingConfig: {
