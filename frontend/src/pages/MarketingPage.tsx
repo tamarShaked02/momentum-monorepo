@@ -382,6 +382,7 @@ const MarketingPage: React.FC = () => {
                   sx={{
                     display: "grid",
                     gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" },
+                    alignItems: "flex-start",
                     gap: 3,
                     mb: 3,
                   }}
@@ -454,7 +455,6 @@ const MarketingPage: React.FC = () => {
                     <Card
                       sx={{
                         border: "1px solid rgba(186,104,200,0.3)",
-                        gridColumn: channels.length < 3 ? "auto" : "1 / -1",
                         overflow: "hidden",
                       }}
                     >
