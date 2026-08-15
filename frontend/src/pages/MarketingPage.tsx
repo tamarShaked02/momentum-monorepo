@@ -398,9 +398,10 @@ const MarketingPage: React.FC = () => {
                       sx={{
                         border: "1px solid rgba(186,104,200,0.3)",
                         gridColumn: channels.length < 3 ? "auto" : "1 / -1",
+                        overflow: "hidden",
                       }}
                     >
-                      <CardContent>
+                      <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
                         <Box
                           sx={{
                             display: "flex",
@@ -417,33 +418,18 @@ const MarketingPage: React.FC = () => {
                         <Box
                           sx={{
                             display: "flex",
-                            flexDirection: { xs: "column", sm: "row" },
+                            flexDirection: "column",
                             gap: 2,
-                            alignItems: "flex-start",
                           }}
                         >
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              flex: 1,
-                              p: 2,
-                              background: "rgba(255,255,255,0.03)",
-                              borderRadius: 2,
-                              whiteSpace: "pre-wrap",
-                              width: "100%",
-                            }}
-                          >
-                            {content.social}
-                          </Typography>
                           {content?.imageUrl && (
                             <Box
                               sx={{
-                                width: { xs: "100%", sm: "50%" },
-                                maxWidth: { sm: "50%" },
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 1.5,
-                                alignItems: "center",
+                                position: "relative",
+                                width: "100%",
+                                borderRadius: 2,
+                                overflow: "hidden",
+                                border: "1px solid rgba(255,255,255,0.08)",
                               }}
                             >
                               <Box
@@ -455,37 +441,52 @@ const MarketingPage: React.FC = () => {
                                 }}
                                 sx={{
                                   width: "100%",
-                                  borderRadius: 2,
+                                  display: "block",
                                   objectFit: "cover",
                                   aspectRatio: "16 / 9",
-                                  border: "1px solid rgba(255,255,255,0.08)",
                                 }}
                               />
-                              <Button
+                              <IconButton
                                 size="small"
-                                variant="outlined"
-                                startIcon={<Download fontSize="small" />}
                                 onClick={() =>
                                   handleDownloadImage(
                                     content.imageUrl!,
                                     `${campaignName || "social-campaign"}-visual.png`
                                   )
                                 }
+                                title="Download Image"
                                 sx={{
-                                  borderColor: "rgba(186,104,200,0.4)",
-                                  color: "#BA68C8",
-                                  fontSize: "0.75rem",
-                                  width: "100%",
+                                  position: "absolute",
+                                  bottom: 12,
+                                  right: 12,
+                                  backgroundColor: "rgba(0, 0, 0, 0.55)",
+                                  backdropFilter: "blur(4px)",
+                                  color: "#ffffff",
+                                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                                  p: 1,
                                   "&:hover": {
-                                    borderColor: "#BA68C8",
-                                    background: "rgba(186,104,200,0.1)",
+                                    backgroundColor: "rgba(0, 0, 0, 0.85)",
+                                    transform: "scale(1.05)",
                                   },
+                                  transition: "all 0.2s ease",
                                 }}
                               >
-                                Download Image
-                              </Button>
+                                <Download fontSize="small" />
+                              </IconButton>
                             </Box>
                           )}
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              p: 2,
+                              background: "rgba(255,255,255,0.03)",
+                              borderRadius: 2,
+                              whiteSpace: "pre-wrap",
+                              width: "100%",
+                            }}
+                          >
+                            {content.social}
+                          </Typography>
                         </Box>
                       </CardContent>
                     </Card>
@@ -728,34 +729,19 @@ const MarketingPage: React.FC = () => {
                               <Box
                                 sx={{
                                   display: "flex",
-                                  flexDirection: { xs: "column", sm: "row" },
-                                  gap: 2,
+                                  flexDirection: "column",
+                                  gap: 1.5,
                                   mt: 0.5,
-                                  alignItems: "flex-start",
                                 }}
                               >
-                                <Typography
-                                  variant="body2"
-                                  sx={{
-                                    flex: 1,
-                                    p: 1.5,
-                                    background: "rgba(255,255,255,0.03)",
-                                    borderRadius: 2,
-                                    whiteSpace: "pre-wrap",
-                                    width: "100%",
-                                  }}
-                                >
-                                  {c.socialContent}
-                                </Typography>
                                 {c.imageUrl && (
                                   <Box
                                     sx={{
-                                      width: { xs: "100%", sm: "50%" },
-                                      maxWidth: { sm: "50%" },
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      gap: 1,
-                                      alignItems: "center",
+                                      position: "relative",
+                                      width: "100%",
+                                      borderRadius: 2,
+                                      overflow: "hidden",
+                                      border: "1px solid rgba(255,255,255,0.08)",
                                     }}
                                   >
                                     <Box
@@ -767,37 +753,52 @@ const MarketingPage: React.FC = () => {
                                       }}
                                       sx={{
                                         width: "100%",
-                                        borderRadius: 2,
+                                        display: "block",
                                         objectFit: "cover",
                                         aspectRatio: "16 / 9",
-                                        border: "1px solid rgba(255,255,255,0.08)",
                                       }}
                                     />
-                                    <Button
+                                    <IconButton
                                       size="small"
-                                      variant="outlined"
-                                      startIcon={<Download fontSize="small" />}
                                       onClick={() =>
                                         handleDownloadImage(
                                           c.imageUrl!,
                                           `${c.name || "campaign"}-visual.png`
                                         )
                                       }
+                                      title="Download Image"
                                       sx={{
-                                        borderColor: "rgba(186,104,200,0.4)",
-                                        color: "#BA68C8",
-                                        fontSize: "0.75rem",
-                                        width: "100%",
+                                        position: "absolute",
+                                        bottom: 12,
+                                        right: 12,
+                                        backgroundColor: "rgba(0, 0, 0, 0.55)",
+                                        backdropFilter: "blur(4px)",
+                                        color: "#ffffff",
+                                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                                        p: 1,
                                         "&:hover": {
-                                          borderColor: "#BA68C8",
-                                          background: "rgba(186,104,200,0.1)",
+                                          backgroundColor: "rgba(0, 0, 0, 0.85)",
+                                          transform: "scale(1.05)",
                                         },
+                                        transition: "all 0.2s ease",
                                       }}
                                     >
-                                      Download Image
-                                    </Button>
+                                      <Download fontSize="small" />
+                                    </IconButton>
                                   </Box>
                                 )}
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    p: 1.5,
+                                    background: "rgba(255,255,255,0.03)",
+                                    borderRadius: 2,
+                                    whiteSpace: "pre-wrap",
+                                    width: "100%",
+                                  }}
+                                >
+                                  {c.socialContent}
+                                </Typography>
                               </Box>
                             </Box>
                           )}
