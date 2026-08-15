@@ -26,6 +26,8 @@ import {
   Share,
   Delete,
   Download,
+  ContentCopy,
+  Check,
 } from "@mui/icons-material";
 import api from "../api/client";
 import { useSnackbar } from "../contexts/SnackbarContext";
@@ -35,6 +37,67 @@ const goalLabels: Record<string, string> = {
   fill_schedule: "📅 Fill Empty Slots",
   promote_product: "🎁 Promote Product",
   general_update: "📢 General Update",
+};
+
+interface CopyableTextBlockProps {
+  text: string;
+  fontStyle?: "italic" | "normal";
+  padding?: number | string;
+}
+
+const CopyableTextBlock: React.FC<CopyableTextBlockProps> = ({
+  text,
+  fontStyle = "normal",
+  padding = 2,
+}) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Copy failed:", err);
+    }
+  };
+
+  return (
+    <Box sx={{ position: "relative", width: "100%" }}>
+      <Typography
+        variant="body2"
+        sx={{
+          p: padding,
+          pr: 5,
+          background: "rgba(255,255,255,0.03)",
+          borderRadius: 2,
+          whiteSpace: "pre-wrap",
+          fontStyle,
+          width: "100%",
+        }}
+      >
+        {text}
+      </Typography>
+      <IconButton
+        size="small"
+        onClick={handleCopy}
+        title={copied ? "Copied!" : "Copy to clipboard"}
+        sx={{
+          position: "absolute",
+          top: 6,
+          right: 6,
+          color: copied ? "#66BB6A" : "rgba(255, 255, 255, 0.45)",
+          "&:hover": {
+            color: copied ? "#81C784" : "#ffffff",
+            backgroundColor: "rgba(255, 255, 255, 0.08)",
+          },
+          transition: "all 0.2s ease",
+        }}
+      >
+        {copied ? <Check fontSize="small" /> : <ContentCopy fontSize="small" />}
+      </IconButton>
+    </Box>
+  );
 };
 
 const MarketingPage: React.FC = () => {
@@ -338,17 +401,10 @@ const MarketingPage: React.FC = () => {
                             SMS
                           </Typography>
                         </Box>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            p: 2,
-                            background: "rgba(255,255,255,0.03)",
-                            borderRadius: 2,
-                            fontStyle: "italic",
-                          }}
-                        >
-                          {content.sms}
-                        </Typography>
+                        <CopyableTextBlock
+                          text={content.sms}
+                          fontStyle="italic"
+                        />
                       </CardContent>
                     </Card>
                   )}
@@ -475,18 +531,7 @@ const MarketingPage: React.FC = () => {
                               </IconButton>
                             </Box>
                           )}
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              p: 2,
-                              background: "rgba(255,255,255,0.03)",
-                              borderRadius: 2,
-                              whiteSpace: "pre-wrap",
-                              width: "100%",
-                            }}
-                          >
-                            {content.social}
-                          </Typography>
+                          <CopyableTextBlock text={content.social} />
                         </Box>
                       </CardContent>
                     </Card>
@@ -682,18 +727,11 @@ const MarketingPage: React.FC = () => {
                               >
                                 SMS
                               </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  p: 1.5,
-                                  mt: 0.5,
-                                  background: "rgba(255,255,255,0.03)",
-                                  borderRadius: 2,
-                                  fontStyle: "italic",
-                                }}
-                              >
-                                {c.smsContent}
-                              </Typography>
+                              <CopyableTextBlock
+                                text={c.smsContent}
+                                fontStyle="italic"
+                                padding={1.5}
+                              />
                             </Box>
                           )}
                           {c.emailContent && (
@@ -787,18 +825,10 @@ const MarketingPage: React.FC = () => {
                                     </IconButton>
                                   </Box>
                                 )}
-                                <Typography
-                                  variant="body2"
-                                  sx={{
-                                    p: 1.5,
-                                    background: "rgba(255,255,255,0.03)",
-                                    borderRadius: 2,
-                                    whiteSpace: "pre-wrap",
-                                    width: "100%",
-                                  }}
-                                >
-                                  {c.socialContent}
-                                </Typography>
+                                <CopyableTextBlock
+                                  text={c.socialContent}
+                                  padding={1.5}
+                                />
                               </Box>
                             </Box>
                           )}
