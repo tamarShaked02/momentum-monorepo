@@ -250,6 +250,44 @@ const getMockMarketingResponse = () => ({
 
 // ---------- Real AI Calls ----------
 
+// Helper function for exponential backoff retries on transient 503 / 429 API errors
+async function generateContentWithRetry(model: any, fullPrompt: string): Promise<any> {
+  const maxRetries = 3;
+  const delays = [1000, 2000, 4000];
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const responsePromise = model.generateContent(fullPrompt);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout")), 30000)
+      );
+      return await Promise.race([responsePromise, timeoutPromise]);
+    } catch (error: any) {
+      const status = error?.status || error?.statusCode;
+      const msg = error?.message || "";
+      const isTransientError =
+        status === 503 ||
+        status === 429 ||
+        msg.includes("503") ||
+        msg.includes("429") ||
+        msg.includes("Timeout") ||
+        msg.includes("high demand") ||
+        msg.includes("overloaded") ||
+        msg.includes("Service Unavailable") ||
+        msg.includes("UNAVAILABLE");
+
+      if (isTransientError && attempt < maxRetries) {
+        const delay = delays[attempt] || 4000;
+        console.warn(`API Timeout/503/429 transient error (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+
+      throw error;
+    }
+  }
+}
+
 const callGemini = async (
   systemPrompt: string,
   userPrompt: string,
@@ -259,7 +297,7 @@ const callGemini = async (
 
   const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
   const fullPrompt = `${systemPrompt}\n\nUSER INPUT: "${userPrompt}"`;
-  const result = await model.generateContent(fullPrompt);
+  const result = await generateContentWithRetry(model, fullPrompt);
   const response = result.response;
   const text = response.text();
   return text
@@ -283,7 +321,7 @@ const callGeminiWithHistory = async (
 
   const fullPrompt = `${systemPrompt}\n\nCONVERSATION SO FAR:\n${conversationText}\n\nRespond to the latest user message. Remember to respond with valid JSON only.`;
 
-  const result = await model.generateContent(fullPrompt);
+  const result = await generateContentWithRetry(model, fullPrompt);
   const response = result.response;
   const text = response.text();
   return text

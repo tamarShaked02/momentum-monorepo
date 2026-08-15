@@ -307,8 +307,14 @@ router.post(
       }
       const content = await generateMarketingContent(brief);
       res.json(content);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to generate content." });
+    } catch (error: any) {
+      console.error("Marketing content generation route error:", error);
+      const status = error?.status || error?.statusCode || 503;
+      const isTransient = status === 503 || status === 429 || error?.message?.includes("503") || error?.message?.includes("429");
+      res.status(isTransient ? 503 : 500).json({
+        error: "Failed to generate content.",
+        message: error?.message || "Service temporarily unavailable. Please try again.",
+      });
     }
   },
 );
