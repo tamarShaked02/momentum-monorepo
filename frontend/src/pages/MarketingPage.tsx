@@ -103,12 +103,13 @@ const MarketingPage: React.FC = () => {
         name: campaignName || `Campaign - ${new Date().toLocaleDateString()}`,
         goal,
         channels,
-        smsContent: content?.sms || null,
+        smsContent: content?.sms || content?.copy?.sms || null,
         emailContent:
           typeof content?.email === "object"
             ? `${content.email.subject}\n\n${content.email.body}`
-            : content?.email || null,
-        socialContent: content?.social || null,
+            : content?.email || content?.copy?.email || null,
+        socialContent: content?.social || content?.copy?.social || null,
+        imageUrl: content?.imageUrl || null,
       });
       setSaved(true);
     } catch {
@@ -297,6 +298,45 @@ const MarketingPage: React.FC = () => {
                     mb: 3,
                   }}
                 >
+                  {content?.imageUrl && (
+                    <Card
+                      sx={{
+                        border: "1px solid rgba(79,195,247,0.3)",
+                        gridColumn: "1 / -1",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <CardContent sx={{ pb: 1 }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            mb: 1.5,
+                          }}
+                        >
+                          <AutoAwesome sx={{ color: "#4FC3F7" }} />
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            Campaign Image Asset
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                      <Box
+                        component="img"
+                        src={content.imageUrl}
+                        alt="Campaign Visual"
+                        onError={(e: any) => {
+                          e.target.style.display = "none";
+                        }}
+                        sx={{
+                          width: "100%",
+                          maxHeight: 320,
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
+                    </Card>
+                  )}
                   {channels.includes("sms") && content.sms && (
                     <Card sx={{ border: "1px solid rgba(255,183,77,0.3)" }}>
                       <CardContent>
@@ -586,6 +626,24 @@ const MarketingPage: React.FC = () => {
                               />
                             ))}
                           </Box>
+                          {c.imageUrl && (
+                            <Box
+                              component="img"
+                              src={c.imageUrl}
+                              alt={c.name}
+                              onError={(e: any) => {
+                                e.target.style.display = "none";
+                              }}
+                              sx={{
+                                width: "100%",
+                                maxHeight: 280,
+                                objectFit: "cover",
+                                borderRadius: 2,
+                                mb: 2,
+                                border: "1px solid rgba(255,255,255,0.08)",
+                              }}
+                            />
+                          )}
                           {c.smsContent && (
                             <Box sx={{ mb: 1 }}>
                               <Typography
