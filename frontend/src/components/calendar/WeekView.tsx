@@ -12,6 +12,13 @@ export interface WeekViewProps {
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 06:00 to 22:00
 
+const getLocalYMD = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 export const WeekView: React.FC<WeekViewProps> = ({
   currentDate,
   appointments,
@@ -33,7 +40,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
     weekDays.push(d);
   }
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = getLocalYMD(new Date());
 
   const handleCellClick = (dayDate: Date, hour: number) => {
     const start = new Date(dayDate);
@@ -73,7 +80,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
       >
         <Box sx={{ p: 1, borderRight: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid #e5e5ea" }} />
         {weekDays.map((dayDate) => {
-          const dateStr = dayDate.toISOString().split("T")[0];
+          const dateStr = getLocalYMD(dayDate);
           const isToday = dateStr === todayStr;
           const weekdayName = dayDate.toLocaleDateString("en-US", { weekday: "short" });
           const dayNum = dayDate.getDate();
@@ -160,12 +167,12 @@ export const WeekView: React.FC<WeekViewProps> = ({
 
         {/* 7 Day Columns */}
         {weekDays.map((dayDate) => {
-          const dateStr = dayDate.toISOString().split("T")[0];
+          const dateStr = getLocalYMD(dayDate);
           const isToday = dateStr === todayStr;
 
           // Filter appointments for this date
           const dayAppts = appointments.filter((a) => {
-            const apptDateStr = new Date(a.startTime).toISOString().split("T")[0];
+            const apptDateStr = getLocalYMD(new Date(a.startTime));
             return apptDateStr === dateStr;
           });
 

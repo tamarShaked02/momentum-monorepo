@@ -52,8 +52,15 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
         end.setHours(23, 59, 59, 999);
       }
 
-      const startIso = start.toISOString().split("T")[0];
-      const endIso = end.toISOString().split("T")[0];
+      const getLocalYMD = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
+
+      const startIso = getLocalYMD(start);
+      const endIso = getLocalYMD(end);
       onRangeChange(startIso, endIso);
     },
     [onRangeChange],

@@ -19,6 +19,13 @@ export interface MonthViewProps {
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const getLocalYMD = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 export const MonthView: React.FC<MonthViewProps> = ({
   currentDate,
   appointments,
@@ -58,7 +65,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
     }
   }
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = getLocalYMD(new Date());
 
   const handleOpenOverflow = (
     e: React.MouseEvent<HTMLElement>,
@@ -134,13 +141,13 @@ export const MonthView: React.FC<MonthViewProps> = ({
         }}
       >
         {days.map((date) => {
-          const dateStr = date.toISOString().split("T")[0];
+          const dateStr = getLocalYMD(date);
           const isToday = dateStr === todayStr;
           const isCurrentMonth = date.getMonth() === month;
 
           // Filter appointments for this date
           const dayAppts = appointments.filter((a) => {
-            const apptDateStr = new Date(a.startTime).toISOString().split("T")[0];
+            const apptDateStr = getLocalYMD(new Date(a.startTime));
             return apptDateStr === dateStr;
           });
 

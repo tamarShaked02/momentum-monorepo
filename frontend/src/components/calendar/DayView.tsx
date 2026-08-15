@@ -12,6 +12,13 @@ export interface DayViewProps {
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 06:00 to 22:00
 
+const getLocalYMD = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 const STATUS_COLORS: Record<string, "info" | "success" | "default"> = {
   scheduled: "info",
   completed: "success",
@@ -27,11 +34,11 @@ export const DayView: React.FC<DayViewProps> = ({
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
 
-  const dateStr = currentDate.toISOString().split("T")[0];
+  const dateStr = getLocalYMD(currentDate);
 
   // Filter appointments for this date
   const dayAppts = appointments.filter((a) => {
-    const apptDateStr = new Date(a.startTime).toISOString().split("T")[0];
+    const apptDateStr = getLocalYMD(new Date(a.startTime));
     return apptDateStr === dateStr;
   });
 
