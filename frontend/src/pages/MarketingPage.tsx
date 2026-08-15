@@ -45,6 +45,51 @@ interface CopyableTextBlockProps {
   padding?: number | string;
 }
 
+const CopyableEmailSubject: React.FC<{ subject: string }> = ({ subject }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(subject);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Subject copy failed:", err);
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        mb: 1.5,
+        mt: 0.5,
+      }}
+    >
+      <Typography variant="subtitle2" sx={{ color: "#4FC3F7", fontWeight: 600 }}>
+        Subject: {subject}
+      </Typography>
+      <IconButton
+        size="small"
+        onClick={handleCopy}
+        title={copied ? "Copied Subject!" : "Copy Subject"}
+        sx={{
+          color: copied ? "#66BB6A" : "rgba(255, 255, 255, 0.45)",
+          "&:hover": {
+            color: copied ? "#81C784" : "#ffffff",
+            backgroundColor: "rgba(255, 255, 255, 0.08)",
+          },
+          transition: "all 0.2s ease",
+        }}
+      >
+        {copied ? <Check fontSize="small" /> : <ContentCopy fontSize="small" />}
+      </IconButton>
+    </Box>
+  );
+};
+
 const CopyableTextBlock: React.FC<CopyableTextBlockProps> = ({
   text,
   fontStyle = "normal",
@@ -440,28 +485,25 @@ const MarketingPage: React.FC = () => {
                             Email
                           </Typography>
                         </Box>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ mb: 1, color: "#4FC3F7" }}
-                        >
-                          Subject:{" "}
-                          {typeof content.email === "object"
-                            ? content.email.subject
-                            : ""}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            p: 2,
-                            background: "rgba(255,255,255,0.03)",
-                            borderRadius: 2,
-                            whiteSpace: "pre-wrap",
-                          }}
-                        >
-                          {typeof content.email === "object"
-                            ? content.email.body
-                            : content.email}
-                        </Typography>
+                        {typeof content.email === "object" ? (
+                          <>
+                            <CopyableEmailSubject subject={content.email.subject} />
+                            <CopyableTextBlock text={content.email.body} />
+                          </>
+                        ) : (
+                          (() => {
+                            const match = content.email.match(/^Subject:\s*(.*?)\n\n([\s\S]*)$/i);
+                            if (match) {
+                              return (
+                                <>
+                                  <CopyableEmailSubject subject={match[1]} />
+                                  <CopyableTextBlock text={match[2]} />
+                                </>
+                              );
+                            }
+                            return <CopyableTextBlock text={content.email} />;
+                          })()
+                        )}
                       </CardContent>
                     </Card>
                   )}
@@ -761,18 +803,18 @@ const MarketingPage: React.FC = () => {
                               >
                                 EMAIL
                               </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  p: 1.5,
-                                  mt: 0.5,
-                                  background: "rgba(255,255,255,0.03)",
-                                  borderRadius: 2,
-                                  whiteSpace: "pre-wrap",
-                                }}
-                              >
-                                {c.emailContent}
-                              </Typography>
+                              {(() => {
+                                const match = c.emailContent.match(/^Subject:\s*(.*?)\n\n([\s\S]*)$/i);
+                                if (match) {
+                                  return (
+                                    <>
+                                      <CopyableEmailSubject subject={match[1]} />
+                                      <CopyableTextBlock text={match[2]} padding={1.5} />
+                                    </>
+                                  );
+                                }
+                                return <CopyableTextBlock text={c.emailContent} padding={1.5} />;
+                              })()}
                             </Box>
                           )}
                           {c.socialContent && (
