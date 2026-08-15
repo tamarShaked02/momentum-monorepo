@@ -30,17 +30,22 @@ services:
       PORT: 3000
       USE_MOCK_AI: ${USE_MOCK_AI:-true}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:3000}
     volumes:
       - ./backend/src:/app/src
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api}
     ports:
-      - "5173:5173"
+      - "5173:80"
     depends_on:
       - backend
     environment:
-      VITE_API_URL: http://localhost:3000/api
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api}
 
 volumes:
   pgdata:

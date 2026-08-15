@@ -58,17 +58,17 @@ router.get("/callback", async (req: Request, res: Response): Promise<void> => {
 
     // Handle OAuth denial
     if (oauthError) {
-      res.redirect("http://localhost:5173/appointments?google_error=denied");
+      res.redirect(`${env.FRONTEND_URL}/appointments?google_error=denied`);
       return;
     }
 
     if (!code || typeof code !== "string") {
-      res.redirect("http://localhost:5173/appointments?google_error=no_code");
+      res.redirect(`${env.FRONTEND_URL}/appointments?google_error=no_code`);
       return;
     }
 
     if (!state || typeof state !== "string") {
-      res.redirect("http://localhost:5173/appointments?google_error=no_state");
+      res.redirect(`${env.FRONTEND_URL}/appointments?google_error=no_state`);
       return;
     }
 
@@ -79,7 +79,7 @@ router.get("/callback", async (req: Request, res: Response): Promise<void> => {
       userId = decoded.userId;
     } catch {
       res.redirect(
-        "http://localhost:5173/appointments?google_error=invalid_state",
+        `${env.FRONTEND_URL}/appointments?google_error=invalid_state`,
       );
       return;
     }
@@ -89,7 +89,7 @@ router.get("/callback", async (req: Request, res: Response): Promise<void> => {
 
     if (!tokens.access_token || !tokens.refresh_token) {
       res.redirect(
-        "http://localhost:5173/appointments?google_error=token_failed",
+        `${env.FRONTEND_URL}/appointments?google_error=token_failed`,
       );
       return;
     }
@@ -111,11 +111,11 @@ router.get("/callback", async (req: Request, res: Response): Promise<void> => {
     });
 
     // Redirect back to frontend with success
-    res.redirect("http://localhost:5173/appointments?google_connected=true");
+    res.redirect(`${env.FRONTEND_URL}/appointments?google_connected=true`);
   } catch (error) {
     console.error("OAuth callback error:", error);
     res.redirect(
-      "http://localhost:5173/appointments?google_error=server_error",
+      `${env.FRONTEND_URL}/appointments?google_error=server_error`,
     );
   }
 });
