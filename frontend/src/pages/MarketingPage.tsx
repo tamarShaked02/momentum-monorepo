@@ -48,7 +48,7 @@ interface CopyableTextBlockProps {
 const CopyableTextBlock: React.FC<CopyableTextBlockProps> = ({
   text,
   fontStyle = "normal",
-  padding = 2,
+  padding = 3,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -69,6 +69,7 @@ const CopyableTextBlock: React.FC<CopyableTextBlockProps> = ({
         sx={{
           p: padding,
           pr: 5,
+          pb: 5,
           background: "rgba(255,255,255,0.03)",
           borderRadius: 2,
           whiteSpace: "pre-wrap",
@@ -84,8 +85,8 @@ const CopyableTextBlock: React.FC<CopyableTextBlockProps> = ({
         title={copied ? "Copied!" : "Copy to clipboard"}
         sx={{
           position: "absolute",
-          top: 6,
-          right: 6,
+          bottom: 12,
+          right: 12,
           color: copied ? "#66BB6A" : "rgba(255, 255, 255, 0.45)",
           "&:hover": {
             color: copied ? "#81C784" : "#ffffff",
