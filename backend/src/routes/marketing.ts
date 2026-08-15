@@ -116,7 +116,8 @@ router.post(
       }
 
       let imageUrl = incomingImageUrl || null;
-      if (!imageUrl) {
+      const isSocialRequested = includesSocialChannel(channels);
+      if (!imageUrl && isSocialRequested) {
         const promptToUse = imagePrompt || `Promotional image artwork for ${name}${goal ? ` (${goal})` : ""}`;
         imageUrl = await generateCampaignImage(promptToUse);
       }
@@ -270,6 +271,19 @@ router.delete(
   },
 );
 
+function includesSocialChannel(channels: any): boolean {
+  if (!channels) return true;
+  if (Array.isArray(channels)) {
+    return channels.some(
+      (c) => typeof c === "string" && (c.toLowerCase().includes("social") || c.toLowerCase().includes("instagram") || c.toLowerCase().includes("facebook"))
+    );
+  }
+  if (typeof channels === "string") {
+    return channels.toLowerCase().includes("social") || channels.toLowerCase().includes("instagram") || channels.toLowerCase().includes("facebook");
+  }
+  return false;
+}
+
 /**
  * @swagger
  * /api/marketing/generate:
@@ -305,7 +319,7 @@ router.delete(
  *         description: Campaign brief is required
  *       401:
  *         description: Unauthorized
- */
+ * */
 router.post(
   "/generate",
   authMiddleware,
@@ -322,10 +336,15 @@ router.post(
         email: generated.email,
         social: generated.social,
       };
-      const imagePrompt = generated.imagePrompt || `Promotional image artwork for: ${brief}`;
 
-      // Generate image visual asset
-      const imageUrl = await generateCampaignImage(imagePrompt);
+      const isSocialRequested = includesSocialChannel(channels);
+      let imageUrl: string | null = null;
+      let imagePrompt: string | null = null;
+
+      if (isSocialRequested) {
+        imagePrompt = generated.imagePrompt || `Promotional image artwork for: ${brief}`;
+        imageUrl = await generateCampaignImage(imagePrompt);
+      }
 
       let campaign = null;
       if (saveToDb) {

@@ -880,15 +880,15 @@ registryFunctions.set("create_campaign", {
     audienceStages: z.array(z.string()).optional().describe("Lifecycle stages defining targeting audience"),
   }),
   handler: async (params, userId) => {
+    const channelList = params.type ? [params.type] : params.channel ? [params.channel] : ["email", "sms", "social"];
+    const isSocial = channelList.includes("social");
     const imagePrompt = params.image_prompt;
-    const imageUrl = await generateCampaignImage(imagePrompt);
+    const imageUrl = isSocial && imagePrompt ? await generateCampaignImage(imagePrompt) : null;
 
     const goal = params.goal || params.targetAudience || params.name;
     const emailContent = `Subject: Exclusive offer for ${params.name}!\n\nHello! Check out our latest updates regarding ${goal} tailored just for you.`;
     const smsContent = `Special offer: ${params.name}! ${goal}. Don't miss out. Reply STOP to opt out.`;
     const socialContent = `🚀 Exciting news! Announcing ${params.name}. ${goal}! Tap link in bio to learn more! #momentum #${params.name.replace(/\s+/g, '')}`;
-
-    const channelList = params.type ? [params.type] : params.channel ? [params.channel] : ["email", "sms", "social"];
 
     const campaign = await prisma.marketingCampaign.create({
       data: {
@@ -2021,15 +2021,15 @@ registryFunctions.set("create_campaign", {
     audienceStages: z.array(z.string()).optional().describe("Lifecycle stages defining targeting audience"),
   }),
   handler: async (params, userId) => {
+    const channelList = params.type ? [params.type] : params.channel ? [params.channel] : ["email", "sms", "social"];
+    const isSocial = channelList.includes("social");
     const imagePrompt = params.image_prompt;
-    const imageUrl = await generateCampaignImage(imagePrompt);
+    const imageUrl = isSocial && imagePrompt ? await generateCampaignImage(imagePrompt) : null;
 
     const goal = params.goal || params.targetAudience || params.name;
     const emailContent = `Subject: Exclusive offer for ${params.name}!\n\nHello! Check out our latest updates regarding ${goal} tailored just for you.`;
     const smsContent = `Special offer: ${params.name}! ${goal}. Don't miss out. Reply STOP to opt out.`;
     const socialContent = `🚀 Exciting news! Announcing ${params.name}. ${goal}! Tap link in bio to learn more! #momentum #${params.name.replace(/\s+/g, '')}`;
-
-    const channelList = params.type ? [params.type] : params.channel ? [params.channel] : ["email", "sms", "social"];
 
     const campaign = await prisma.marketingCampaign.create({
       data: {

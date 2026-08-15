@@ -25,6 +25,7 @@ import {
   Email,
   Share,
   Delete,
+  Download,
 } from "@mui/icons-material";
 import api from "../api/client";
 import { useSnackbar } from "../contexts/SnackbarContext";
@@ -134,10 +135,33 @@ const MarketingPage: React.FC = () => {
   };
 
   const statusColor: Record<string, string> = {
-    draft: "#FFB74D",
+    draft: "#999999",
     active: "#66BB6A",
     completed: "#4FC3F7",
-    paused: "#9AA0B4",
+  };
+
+  const handleDownloadImage = async (url: string, filename: string = "social-campaign-image.png") => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Image download error:", error);
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   return (
@@ -298,45 +322,6 @@ const MarketingPage: React.FC = () => {
                     mb: 3,
                   }}
                 >
-                  {content?.imageUrl && (
-                    <Card
-                      sx={{
-                        border: "1px solid rgba(79,195,247,0.3)",
-                        gridColumn: "1 / -1",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <CardContent sx={{ pb: 1 }}>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
-                            mb: 1.5,
-                          }}
-                        >
-                          <AutoAwesome sx={{ color: "#4FC3F7" }} />
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            Campaign Image Asset
-                          </Typography>
-                        </Box>
-                      </CardContent>
-                      <Box
-                        component="img"
-                        src={content.imageUrl}
-                        alt="Campaign Visual"
-                        onError={(e: any) => {
-                          e.target.style.display = "none";
-                        }}
-                        sx={{
-                          width: "100%",
-                          maxHeight: 320,
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
-                    </Card>
-                  )}
                   {channels.includes("sms") && content.sms && (
                     <Card sx={{ border: "1px solid rgba(255,183,77,0.3)" }}>
                       <CardContent>
@@ -429,17 +414,79 @@ const MarketingPage: React.FC = () => {
                             Social Media
                           </Typography>
                         </Box>
-                        <Typography
-                          variant="body2"
+                        <Box
                           sx={{
-                            p: 2,
-                            background: "rgba(255,255,255,0.03)",
-                            borderRadius: 2,
-                            whiteSpace: "pre-wrap",
+                            display: "flex",
+                            flexDirection: { xs: "column", sm: "row" },
+                            gap: 2,
+                            alignItems: "flex-start",
                           }}
                         >
-                          {content.social}
-                        </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              flex: 1,
+                              p: 2,
+                              background: "rgba(255,255,255,0.03)",
+                              borderRadius: 2,
+                              whiteSpace: "pre-wrap",
+                              width: "100%",
+                            }}
+                          >
+                            {content.social}
+                          </Typography>
+                          {content?.imageUrl && (
+                            <Box
+                              sx={{
+                                width: { xs: "100%", sm: "50%" },
+                                maxWidth: { sm: "50%" },
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 1.5,
+                                alignItems: "center",
+                              }}
+                            >
+                              <Box
+                                component="img"
+                                src={content.imageUrl}
+                                alt="Social Media Visual"
+                                onError={(e: any) => {
+                                  e.target.style.display = "none";
+                                }}
+                                sx={{
+                                  width: "100%",
+                                  borderRadius: 2,
+                                  objectFit: "cover",
+                                  aspectRatio: "16 / 9",
+                                  border: "1px solid rgba(255,255,255,0.08)",
+                                }}
+                              />
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<Download fontSize="small" />}
+                                onClick={() =>
+                                  handleDownloadImage(
+                                    content.imageUrl!,
+                                    `${campaignName || "social-campaign"}-visual.png`
+                                  )
+                                }
+                                sx={{
+                                  borderColor: "rgba(186,104,200,0.4)",
+                                  color: "#BA68C8",
+                                  fontSize: "0.75rem",
+                                  width: "100%",
+                                  "&:hover": {
+                                    borderColor: "#BA68C8",
+                                    background: "rgba(186,104,200,0.1)",
+                                  },
+                                }}
+                              >
+                                Download Image
+                              </Button>
+                            </Box>
+                          )}
+                        </Box>
                       </CardContent>
                     </Card>
                   )}
@@ -626,24 +673,6 @@ const MarketingPage: React.FC = () => {
                               />
                             ))}
                           </Box>
-                          {c.imageUrl && (
-                            <Box
-                              component="img"
-                              src={c.imageUrl}
-                              alt={c.name}
-                              onError={(e: any) => {
-                                e.target.style.display = "none";
-                              }}
-                              sx={{
-                                width: "100%",
-                                maxHeight: 280,
-                                objectFit: "cover",
-                                borderRadius: 2,
-                                mb: 2,
-                                border: "1px solid rgba(255,255,255,0.08)",
-                              }}
-                            />
-                          )}
                           {c.smsContent && (
                             <Box sx={{ mb: 1 }}>
                               <Typography
@@ -689,25 +718,87 @@ const MarketingPage: React.FC = () => {
                             </Box>
                           )}
                           {c.socialContent && (
-                            <Box>
+                            <Box sx={{ mt: 1 }}>
                               <Typography
                                 variant="caption"
                                 sx={{ color: "#BA68C8", fontWeight: 600 }}
                               >
                                 SOCIAL
                               </Typography>
-                              <Typography
-                                variant="body2"
+                              <Box
                                 sx={{
-                                  p: 1.5,
+                                  display: "flex",
+                                  flexDirection: { xs: "column", sm: "row" },
+                                  gap: 2,
                                   mt: 0.5,
-                                  background: "rgba(255,255,255,0.03)",
-                                  borderRadius: 2,
-                                  whiteSpace: "pre-wrap",
+                                  alignItems: "flex-start",
                                 }}
                               >
-                                {c.socialContent}
-                              </Typography>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    flex: 1,
+                                    p: 1.5,
+                                    background: "rgba(255,255,255,0.03)",
+                                    borderRadius: 2,
+                                    whiteSpace: "pre-wrap",
+                                    width: "100%",
+                                  }}
+                                >
+                                  {c.socialContent}
+                                </Typography>
+                                {c.imageUrl && (
+                                  <Box
+                                    sx={{
+                                      width: { xs: "100%", sm: "50%" },
+                                      maxWidth: { sm: "50%" },
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: 1,
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    <Box
+                                      component="img"
+                                      src={c.imageUrl}
+                                      alt={c.name}
+                                      onError={(e: any) => {
+                                        e.target.style.display = "none";
+                                      }}
+                                      sx={{
+                                        width: "100%",
+                                        borderRadius: 2,
+                                        objectFit: "cover",
+                                        aspectRatio: "16 / 9",
+                                        border: "1px solid rgba(255,255,255,0.08)",
+                                      }}
+                                    />
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={<Download fontSize="small" />}
+                                      onClick={() =>
+                                        handleDownloadImage(
+                                          c.imageUrl!,
+                                          `${c.name || "campaign"}-visual.png`
+                                        )
+                                      }
+                                      sx={{
+                                        borderColor: "rgba(186,104,200,0.4)",
+                                        color: "#BA68C8",
+                                        fontSize: "0.75rem",
+                                        width: "100%",
+                                        "&:hover": {
+                                          borderColor: "#BA68C8",
+                                          background: "rgba(186,104,200,0.1)",
+                                        },
+                                      }}
+                                    >
+                                      Download Image
+                                    </Button>
+                                  </Box>
+                                )}
+                              </Box>
                             </Box>
                           )}
                           <Typography
