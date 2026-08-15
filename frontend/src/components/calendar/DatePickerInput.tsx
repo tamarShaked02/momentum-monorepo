@@ -115,8 +115,8 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
     const d = String(dateObj.getDate()).padStart(2, "0");
 
     if (type === "datetime-local") {
-      const hh = String(hours).padStart(2, "0");
-      const mm = String(minutes).padStart(2, "0");
+      const hh = String(dateObj.getHours()).padStart(2, "0");
+      const mm = String(dateObj.getMinutes()).padStart(2, "0");
       onChange(`${y}-${m}-${d}T${hh}:${mm}`);
     } else {
       onChange(`${y}-${m}-${d}`);
