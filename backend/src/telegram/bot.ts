@@ -155,14 +155,15 @@ if (bot) {
       return;
     }
 
-    const phoneNumber = contact.phone_number.replace(/\D/g, "");
+    const normalizePhone = (p: string) => p.replace(/\D/g, "").replace(/^0+/, "");
+    const phoneNumber = normalizePhone(contact.phone_number);
 
     let linkedCount = 0;
 
     // 1) Link Owner accounts
     const usersWithPhone = await prisma.user.findMany({ where: { phone: { not: null } } });
     const matchedOwners = usersWithPhone.filter((u) => {
-      const dbPhone = u.phone!.replace(/\D/g, "");
+      const dbPhone = normalizePhone(u.phone!);
       return dbPhone === phoneNumber || phoneNumber.endsWith(dbPhone) || dbPhone.endsWith(phoneNumber);
     });
 
@@ -174,7 +175,7 @@ if (bot) {
     // 2) Link Customer accounts
     const customersWithPhone = await prisma.customer.findMany({ where: { phone: { not: null } }, include: { user: true } });
     const matchedCustomers = customersWithPhone.filter((c) => {
-      const dbPhone = c.phone!.replace(/\D/g, "");
+      const dbPhone = normalizePhone(c.phone!);
       return dbPhone === phoneNumber || phoneNumber.endsWith(dbPhone) || dbPhone.endsWith(phoneNumber);
     });
 
