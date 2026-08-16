@@ -82,10 +82,7 @@ app.listen(env.PORT, () => {
 // Start Telegram bot
 if (bot) {
   if (env.NODE_ENV === "production") {
-    const webhookUrl = `${env.BACKEND_URL}/telegram/webhook`;
-    bot.telegram.setWebhook(webhookUrl)
-      .then(() => console.log(`🤖 Telegram webhook set to ${webhookUrl}`))
-      .catch((err) => console.error("Failed to set Telegram webhook:", err));
+    bot.launch().then(() => console.log("🤖 Telegram bot is running in polling mode..."));
   } else {
     // Polling for development
     bot.launch().then(() => console.log("🤖 Telegram bot is running in polling mode..."));
