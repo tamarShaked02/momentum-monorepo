@@ -1,3 +1,4 @@
+
 import { Router, Response } from "express";
 import { authMiddleware, AuthRequest } from "../middleware/auth.js";
 import { getPagination, paginatedResponse } from "../utils/pagination.js";
@@ -100,6 +101,7 @@ router.post(
       const {
         name,
         goal,
+        status,
         channels,
         smsContent,
         emailContent,
@@ -116,27 +118,51 @@ router.post(
         return;
       }
 
+      const finalTelegramContent = telegramContent || req.body.telegram || req.body.copy?.telegram || null;
+      const finalSmsContent = smsContent || req.body.sms || req.body.copy?.sms || null;
+      const finalSocialContent = socialContent || req.body.social || req.body.copy?.social || null;
+      const rawEmail = emailContent || req.body.email || req.body.copy?.email || null;
+      const finalEmailContent =
+        typeof rawEmail === "object" && rawEmail?.subject
+          ? `Subject: ${rawEmail.subject}\n\n${rawEmail.body}`
+          : typeof rawEmail === "string"
+            ? rawEmail
+            : null;
+
+      const resolvedChannels = Array.isArray(channels)
+        ? [...channels]
+        : typeof channels === "string"
+          ? [channels]
+          : [];
+      if (finalTelegramContent && !resolvedChannels.includes("telegram")) resolvedChannels.push("telegram");
+      if (finalSmsContent && !resolvedChannels.includes("sms")) resolvedChannels.push("sms");
+      if (finalEmailContent && !resolvedChannels.includes("email")) resolvedChannels.push("email");
+      if (finalSocialContent && !resolvedChannels.includes("social")) resolvedChannels.push("social");
+
       let imageUrl = incomingImageUrl || null;
-      const isSocialRequested = includesSocialChannel(channels);
+      const isSocialRequested = includesSocialChannel(resolvedChannels);
       if (!imageUrl && isSocialRequested) {
         const promptToUse = imagePrompt || `Promotional image artwork for ${name}${goal ? ` (${goal})` : ""}`;
         imageUrl = await generateCampaignImage(promptToUse);
       }
+
+      const validScheduledAt = (scheduledAt && !isNaN(new Date(scheduledAt).getTime())) ? new Date(scheduledAt) : null;
 
       const campaign = await prisma.marketingCampaign.create({
         data: {
           userId: req.userId!,
           name,
           goal: goal || null,
-          channels: channels || [],
-          smsContent: smsContent || null,
-          emailContent: emailContent || null,
-          socialContent: socialContent || null,
-          telegramContent: telegramContent || null,
+          status: status || "draft",
+          channels: resolvedChannels,
+          smsContent: finalSmsContent,
+          emailContent: finalEmailContent,
+          socialContent: finalSocialContent,
+          telegramContent: finalTelegramContent,
           imageUrl,
           audienceTags: audienceTags || [],
           audienceLifecycleStages: audienceLifecycleStages || [],
-          scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+          scheduledAt: validScheduledAt,
         },
       });
       res.status(201).json(campaign);
@@ -210,7 +236,7 @@ router.put(
           ...(telegramContent !== undefined && { telegramContent }),
           ...(imageUrl !== undefined && { imageUrl }),
           ...(scheduledAt !== undefined && {
-            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+            scheduledAt: (scheduledAt && !isNaN(new Date(scheduledAt).getTime())) ? new Date(scheduledAt) : null,
           }),
           ...(audienceTags !== undefined && { audienceTags }),
           ...(audienceLifecycleStages !== undefined && {
@@ -337,12 +363,11 @@ router.post(
         return;
       }
       const generated = await generateMarketingContent(brief);
-      const copy = generated.copy || {
-        sms: generated.sms,
-        email: generated.email,
-        social: generated.social,
-        telegram: generated.telegram,
-      };
+      const copy = generated.copy || {};
+      const smsMessage = copy.sms || generated.sms || null;
+      const emailMessage = copy.email || generated.email || null;
+      const socialMessage = copy.social || generated.social || null;
+      const telegramMessage = copy.telegram || generated.telegram || null;
 
       const isSocialRequested = includesSocialChannel(channels);
       let imageUrl: string | null = null;
@@ -355,29 +380,43 @@ router.post(
 
       let campaign = null;
       if (saveToDb) {
+        const formattedEmail =
+          typeof emailMessage === "object" && emailMessage?.subject
+            ? `Subject: ${emailMessage.subject}\n\n${emailMessage.body}`
+            : typeof emailMessage === "string"
+              ? emailMessage
+              : null;
+
         campaign = await prisma.marketingCampaign.create({
           data: {
             userId: req.userId!,
             name: name || `Campaign - ${new Date().toLocaleDateString()}`,
             goal: brief,
-            channels: channels || ["email", "sms", "social"],
-            smsContent: copy.sms || null,
-            emailContent: typeof copy.email === "object" ? `${copy.email.subject}\n\n${copy.email.body}` : copy.email || null,
-            socialContent: copy.social || null,
-            telegramContent: copy.telegram || null,
+            channels: channels || ["email", "sms", "social", "telegram"],
+            smsContent: typeof smsMessage === "string" ? smsMessage : null,
+            emailContent: formattedEmail,
+            socialContent: typeof socialMessage === "string" ? socialMessage : null,
+            telegramContent: typeof telegramMessage === "string" ? telegramMessage : null,
             imageUrl,
           },
         });
       }
 
+      const fullCopy = {
+        sms: smsMessage,
+        email: emailMessage,
+        social: socialMessage,
+        telegram: telegramMessage,
+      };
+
       res.json({
-        copy,
+        copy: fullCopy,
         imagePrompt,
         imageUrl,
-        sms: copy.sms,
-        email: copy.email,
-        social: copy.social,
-        telegram: copy.telegram,
+        sms: smsMessage,
+        email: emailMessage,
+        social: socialMessage,
+        telegram: telegramMessage,
         ...(campaign ? { campaign } : {}),
       });
     } catch (error: any) {
@@ -429,6 +468,23 @@ router.post(
   },
 );
 
+function parseQueryList(val: unknown): string[] {
+  if (!val) return [];
+  if (Array.isArray(val)) {
+    return val
+      .flatMap((v) => (typeof v === "string" ? v.split(",") : []))
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }
+  if (typeof val === "string") {
+    return val
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
 /**
  * Build a Prisma where clause for segment queries.
  * Logic: AND between filter types (tags AND lifecycleStages), OR within each type.
@@ -447,8 +503,10 @@ function buildSegmentWhere(
       tags: {
         some: {
           tag: {
-            name: { in: tags, mode: "insensitive" },
             userId,
+            OR: tags.map((t) => ({
+              name: { equals: t, mode: "insensitive" },
+            })),
           },
         },
       },
@@ -457,8 +515,17 @@ function buildSegmentWhere(
 
   // OR within lifecycle stages: contact must be one of the specified stages
   if (lifecycleStages && lifecycleStages.length > 0) {
+    const formattedStages = Array.from(
+      new Set(
+        lifecycleStages.flatMap((s) => [
+          s.toLowerCase(),
+          s.toUpperCase(),
+          s.charAt(0).toUpperCase() + s.slice(1).toLowerCase(),
+        ])
+      )
+    );
     andConditions.push({
-      lifecycleStage: { in: lifecycleStages.map((s) => s.toLowerCase()) },
+      lifecycleStage: { in: formattedStages },
     });
   }
 
@@ -579,18 +646,8 @@ router.get(
     try {
       const { tags, lifecycleStages } = req.query;
 
-      const tagList = tags
-        ? (tags as string)
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean)
-        : [];
-      const lifecycleList = lifecycleStages
-        ? (lifecycleStages as string)
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [];
+      const tagList = parseQueryList(tags);
+      const lifecycleList = parseQueryList(lifecycleStages);
 
       if (tagList.length === 0 && lifecycleList.length === 0) {
         res

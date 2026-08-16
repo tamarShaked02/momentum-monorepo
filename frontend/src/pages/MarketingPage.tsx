@@ -217,8 +217,8 @@ const MarketingPage: React.FC = () => {
         channels,
         smsContent: content?.sms || content?.copy?.sms || null,
         emailContent:
-          typeof content?.email === "object"
-            ? `${content.email.subject}\n\n${content.email.body}`
+          typeof content?.email === "object" && content?.email?.subject
+            ? `Subject: ${content.email.subject}\n\n${content.email.body}`
             : content?.email || content?.copy?.email || null,
         socialContent: content?.social || content?.copy?.social || null,
         telegramContent: content?.telegram || content?.copy?.telegram || null,
