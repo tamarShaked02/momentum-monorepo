@@ -479,8 +479,8 @@ const MarketingPage: React.FC = () => {
                 <Box
                   sx={{
                     columns: { xs: 1, md: 2 },
-                    columnGap: 3,
-                    mb: 3,
+                    columnGap: 4,
+                    mb: 4,
                   }}
                 >
                   {channels.includes("sms") && content.sms && (
@@ -490,7 +490,7 @@ const MarketingPage: React.FC = () => {
                         breakInside: "avoid",
                         display: "inline-block",
                         width: "100%",
-                        mb: 3,
+                        mb: 4,
                       }}
                     >
                       <CardContent>
@@ -521,7 +521,7 @@ const MarketingPage: React.FC = () => {
                         breakInside: "avoid",
                         display: "inline-block",
                         width: "100%",
-                        mb: 3,
+                        mb: 4,
                       }}
                     >
                       <CardContent>
@@ -567,7 +567,7 @@ const MarketingPage: React.FC = () => {
                         breakInside: "avoid",
                         display: "inline-block",
                         width: "100%",
-                        mb: 3,
+                        mb: 4,
                         overflow: "hidden",
                       }}
                     >
@@ -657,7 +657,7 @@ const MarketingPage: React.FC = () => {
                         breakInside: "avoid",
                         display: "inline-block",
                         width: "100%",
-                        mb: 3,
+                        mb: 4,
                       }}
                     >
                       <CardContent>
@@ -872,7 +872,7 @@ const MarketingPage: React.FC = () => {
                               display: "flex",
                               gap: 1,
                               flexWrap: "wrap",
-                              mb: 1.5,
+                              mb: 3,
                             }}
                           >
                             {c.channels.map((ch) => (
@@ -889,10 +889,10 @@ const MarketingPage: React.FC = () => {
                             ))}
                           </Box>
                           {c.smsContent && (
-                            <Box sx={{ mb: 1 }}>
+                            <Box sx={{ mt: 3, mb: 3 }}>
                               <Typography
                                 variant="caption"
-                                sx={{ color: "#FFB74D", fontWeight: 600 }}
+                                sx={{ color: "#FFB74D", fontWeight: 600, display: "block", mb: 1 }}
                               >
                                 SMS
                               </Typography>
@@ -904,10 +904,10 @@ const MarketingPage: React.FC = () => {
                             </Box>
                           )}
                           {c.emailContent && (
-                            <Box sx={{ mb: 1 }}>
+                            <Box sx={{ mt: 3, mb: 3 }}>
                               <Typography
                                 variant="caption"
-                                sx={{ color: "#4FC3F7", fontWeight: 600 }}
+                                sx={{ color: "#4FC3F7", fontWeight: 600, display: "block", mb: 1 }}
                               >
                                 EMAIL
                               </Typography>
@@ -926,10 +926,10 @@ const MarketingPage: React.FC = () => {
                             </Box>
                           )}
                           {c.socialContent && (
-                            <Box sx={{ mt: 1 }}>
+                            <Box sx={{ mt: 3, mb: 3 }}>
                               <Typography
                                 variant="caption"
-                                sx={{ color: "#BA68C8", fontWeight: 600 }}
+                                sx={{ color: "#BA68C8", fontWeight: 600, display: "block", mb: 1 }}
                               >
                                 SOCIAL
                               </Typography>
@@ -1002,13 +1002,13 @@ const MarketingPage: React.FC = () => {
                             </Box>
                           )}
                           {c.telegramContent && (
-                            <Box sx={{ mt: 1.5 }}>
+                            <Box sx={{ mt: 3, mb: 3 }}>
                               <Box
                                 sx={{
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "space-between",
-                                  mb: 0.5,
+                                  mb: 1,
                                   flexWrap: "wrap",
                                   gap: 1,
                                 }}
