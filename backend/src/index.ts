@@ -79,14 +79,9 @@ app.listen(env.PORT, () => {
   console.log(`🚀 Momentum API running on port ${env.PORT}`);
 });
 
-// Start Telegram bot
+// Start Telegram bot in polling mode
 if (bot) {
-  if (env.NODE_ENV === "production") {
-    bot.launch().then(() => console.log("🤖 Telegram bot is running in polling mode..."));
-  } else {
-    // Polling for development
-    bot.launch().then(() => console.log("🤖 Telegram bot is running in polling mode..."));
-  }
+  bot.launch().then(() => console.log("🤖 Telegram bot is running in polling mode..."));
 }
 
 export default app;
