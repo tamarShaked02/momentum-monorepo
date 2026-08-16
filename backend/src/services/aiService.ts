@@ -238,18 +238,67 @@ const getMockCommandResponse = (command: string) => {
   };
 };
 
-const getMockMarketingResponse = () => ({
-  sms: "🔥 Flash Sale! 20% off all services this week only. Book now before slots fill up! Reply BOOK to reserve.",
-  email: {
+const getMockMarketingResponse = (brief?: string) => {
+  const sms = "🔥 Flash Sale! 20% off all services this week only. Book now before slots fill up! Reply BOOK to reserve.";
+  const email = {
     subject: "✨ Exclusive Offer Just For You!",
     body: "Hi there!\n\nWe're running a special promotion this week - 20% off all our services!\n\nDon't miss out on this limited-time offer. Book your appointment today.\n\nSee you soon!",
-  },
-  social:
-    "✨ FLASH SALE ALERT ✨\n\n20% OFF all services this week! 🎉\n\nLimited slots available - book now! Link in bio 👆\n\n#SmallBusiness #FlashSale #BookNow #SpecialOffer",
-  telegram: "🚀 *Flash Sale!* 20% off all services this week only. Book now through this bot before slots fill up! 🎉",
-});
+  };
+  const social = "✨ FLASH SALE ALERT ✨\n\n20% OFF all services this week! 🎉\n\nLimited slots available - book now! Link in bio 👆\n\n#SmallBusiness #FlashSale #BookNow #SpecialOffer";
+  const telegram = "🚀 *Flash Sale!* 20% off all services this week only. Book now through this bot before slots fill up! 🎉";
+  const imagePrompt = brief
+    ? `Vibrant, high-resolution promotional artwork for ${brief}`
+    : "Vibrant, high-resolution promotional marketing artwork showcasing a special offer with modern typography and rich gradients.";
+
+  return {
+    copy: { sms, email, social, telegram },
+    imagePrompt,
+    sms,
+    email,
+    social,
+    telegram,
+  };
+};
 
 // ---------- Real AI Calls ----------
+
+// Helper function for exponential backoff retries on transient 503 / 429 API errors
+async function generateContentWithRetry(model: any, fullPrompt: string): Promise<any> {
+  const maxRetries = 3;
+  const delays = [1000, 2000, 4000];
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const responsePromise = model.generateContent(fullPrompt);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout")), 30000)
+      );
+      return await Promise.race([responsePromise, timeoutPromise]);
+    } catch (error: any) {
+      const status = error?.status || error?.statusCode;
+      const msg = error?.message || "";
+      const isTransientError =
+        status === 503 ||
+        status === 429 ||
+        msg.includes("503") ||
+        msg.includes("429") ||
+        msg.includes("Timeout") ||
+        msg.includes("high demand") ||
+        msg.includes("overloaded") ||
+        msg.includes("Service Unavailable") ||
+        msg.includes("UNAVAILABLE");
+
+      if (isTransientError && attempt < maxRetries) {
+        const delay = delays[attempt] || 4000;
+        console.warn(`API Timeout/503/429 transient error (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+
+      throw error;
+    }
+  }
+}
 
 const callGemini = async (
   systemPrompt: string,
@@ -260,7 +309,7 @@ const callGemini = async (
 
   const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
   const fullPrompt = `${systemPrompt}\n\nUSER INPUT: "${userPrompt}"`;
-  const result = await model.generateContent(fullPrompt);
+  const result = await generateContentWithRetry(model, fullPrompt);
   const response = result.response;
   const text = response.text();
   return text
@@ -284,7 +333,7 @@ const callGeminiWithHistory = async (
 
   const fullPrompt = `${systemPrompt}\n\nCONVERSATION SO FAR:\n${conversationText}\n\nRespond to the latest user message. Remember to respond with valid JSON only.`;
 
-  const result = await model.generateContent(fullPrompt);
+  const result = await generateContentWithRetry(model, fullPrompt);
   const response = result.response;
   const text = response.text();
   return text
@@ -335,19 +384,38 @@ export const processCommand = async (command: string): Promise<any> => {
   }
 };
 
-export const generateMarketingContent = async (brief: string): Promise<any> => {
+export const generateMarketingContent = async (
+  brief: string,
+): Promise<{ copy: any; imagePrompt: string; sms?: string; email?: any; social?: string; telegram?: string }> => {
   if (env.USE_MOCK_AI) {
     console.log("Using Mock AI for marketing");
-    return getMockMarketingResponse();
+    return getMockMarketingResponse(brief);
   }
 
   try {
     const systemPrompt = getMarketingPrompt();
     const text = await callGemini(systemPrompt, brief);
-    return JSON.parse(text);
+    const parsed = JSON.parse(text);
+
+    const copy = parsed.copy || {
+      sms: parsed.sms || "Special offer available now! Contact us today.",
+      email: parsed.email || { subject: "Special Offer", body: "Check out our latest offer!" },
+      social: parsed.social || "Check out our latest campaign! #momentum",
+      telegram: parsed.telegram || "Special offer available now! Book today.",
+    };
+    const imagePrompt = parsed.imagePrompt || `Promotional marketing artwork for: ${brief}`;
+
+    return {
+      copy,
+      imagePrompt,
+      sms: copy.sms,
+      email: copy.email,
+      social: copy.social,
+      telegram: copy.telegram,
+    };
   } catch (error) {
     console.error("AI marketing error:", error);
-    return getMockMarketingResponse();
+    return getMockMarketingResponse(brief);
   }
 };
 

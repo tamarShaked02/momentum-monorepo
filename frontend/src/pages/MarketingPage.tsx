@@ -26,6 +26,9 @@ import {
   Share,
   Delete,
   Telegram,
+  Download,
+  ContentCopy,
+  Check,
 } from "@mui/icons-material";
 import api from "../api/client";
 import { useSnackbar } from "../contexts/SnackbarContext";
@@ -35,6 +38,113 @@ const goalLabels: Record<string, string> = {
   fill_schedule: "📅 Fill Empty Slots",
   promote_product: "🎁 Promote Product",
   general_update: "📢 General Update",
+};
+
+interface CopyableTextBlockProps {
+  text: string;
+  fontStyle?: "italic" | "normal";
+  padding?: number | string;
+}
+
+const CopyableEmailSubject: React.FC<{ subject: string }> = ({ subject }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(subject);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Subject copy failed:", err);
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        mb: 1.5,
+        mt: 0.5,
+      }}
+    >
+      <Typography variant="subtitle2" sx={{ color: "#4FC3F7", fontWeight: 600 }}>
+        Subject: {subject}
+      </Typography>
+      <IconButton
+        size="small"
+        onClick={handleCopy}
+        title={copied ? "Copied Subject!" : "Copy Subject"}
+        sx={{
+          color: copied ? "#66BB6A" : "rgba(255, 255, 255, 0.45)",
+          "&:hover": {
+            color: copied ? "#81C784" : "#ffffff",
+            backgroundColor: "rgba(255, 255, 255, 0.08)",
+          },
+          transition: "all 0.2s ease",
+        }}
+      >
+        {copied ? <Check fontSize="small" /> : <ContentCopy fontSize="small" />}
+      </IconButton>
+    </Box>
+  );
+};
+
+const CopyableTextBlock: React.FC<CopyableTextBlockProps> = ({
+  text,
+  fontStyle = "normal",
+  padding = 3,
+}) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Copy failed:", err);
+    }
+  };
+
+  return (
+    <Box sx={{ position: "relative", width: "100%" }}>
+      <Typography
+        variant="body2"
+        sx={{
+          p: padding,
+          pr: 5,
+          pb: 5,
+          background: "rgba(255,255,255,0.03)",
+          borderRadius: 2,
+          whiteSpace: "pre-wrap",
+          fontStyle,
+          width: "100%",
+        }}
+      >
+        {text}
+      </Typography>
+      <IconButton
+        size="small"
+        onClick={handleCopy}
+        title={copied ? "Copied!" : "Copy to clipboard"}
+        sx={{
+          position: "absolute",
+          bottom: 12,
+          right: 12,
+          color: copied ? "#66BB6A" : "rgba(255, 255, 255, 0.45)",
+          "&:hover": {
+            color: copied ? "#81C784" : "#ffffff",
+            backgroundColor: "rgba(255, 255, 255, 0.08)",
+          },
+          transition: "all 0.2s ease",
+        }}
+      >
+        {copied ? <Check fontSize="small" /> : <ContentCopy fontSize="small" />}
+      </IconButton>
+    </Box>
+  );
 };
 
 const MarketingPage: React.FC = () => {
@@ -105,13 +215,14 @@ const MarketingPage: React.FC = () => {
         name: campaignName || `Campaign - ${new Date().toLocaleDateString()}`,
         goal,
         channels,
-        smsContent: content?.sms || null,
+        smsContent: content?.sms || content?.copy?.sms || null,
         emailContent:
           typeof content?.email === "object"
             ? `${content.email.subject}\n\n${content.email.body}`
-            : content?.email || null,
-        socialContent: content?.social || null,
-        telegramContent: content?.telegram || null,
+            : content?.email || content?.copy?.email || null,
+        socialContent: content?.social || content?.copy?.social || null,
+        telegramContent: content?.telegram || content?.copy?.telegram || null,
+        imageUrl: content?.imageUrl || null,
       });
       setSaved(true);
     } catch {
@@ -149,10 +260,33 @@ const MarketingPage: React.FC = () => {
   };
 
   const statusColor: Record<string, string> = {
-    draft: "#FFB74D",
+    draft: "#999999",
     active: "#66BB6A",
     completed: "#4FC3F7",
-    paused: "#9AA0B4",
+  };
+
+  const handleDownloadImage = async (url: string, filename: string = "social-campaign-image.png") => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Image download error:", error);
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   return (
@@ -310,14 +444,21 @@ const MarketingPage: React.FC = () => {
               <Box>
                 <Box
                   sx={{
-                    display: "grid",
-                    gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" },
-                    gap: 3,
+                    columns: { xs: 1, md: 2 },
+                    columnGap: 3,
                     mb: 3,
                   }}
                 >
                   {channels.includes("sms") && content.sms && (
-                    <Card sx={{ border: "1px solid rgba(255,183,77,0.3)" }}>
+                    <Card
+                      sx={{
+                        border: "1px solid rgba(255,183,77,0.3)",
+                        breakInside: "avoid",
+                        display: "inline-block",
+                        width: "100%",
+                        mb: 3,
+                      }}
+                    >
                       <CardContent>
                         <Box
                           sx={{
@@ -332,22 +473,23 @@ const MarketingPage: React.FC = () => {
                             SMS
                           </Typography>
                         </Box>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            p: 2,
-                            background: "rgba(255,255,255,0.03)",
-                            borderRadius: 2,
-                            fontStyle: "italic",
-                          }}
-                        >
-                          {content.sms}
-                        </Typography>
+                        <CopyableTextBlock
+                          text={content.sms}
+                          fontStyle="italic"
+                        />
                       </CardContent>
                     </Card>
                   )}
                   {channels.includes("email") && content.email && (
-                    <Card sx={{ border: "1px solid rgba(79,195,247,0.3)" }}>
+                    <Card
+                      sx={{
+                        border: "1px solid rgba(79,195,247,0.3)",
+                        breakInside: "avoid",
+                        display: "inline-block",
+                        width: "100%",
+                        mb: 3,
+                      }}
+                    >
                       <CardContent>
                         <Box
                           sx={{
@@ -362,28 +504,25 @@ const MarketingPage: React.FC = () => {
                             Email
                           </Typography>
                         </Box>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ mb: 1, color: "#4FC3F7" }}
-                        >
-                          Subject:{" "}
-                          {typeof content.email === "object"
-                            ? content.email.subject
-                            : ""}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            p: 2,
-                            background: "rgba(255,255,255,0.03)",
-                            borderRadius: 2,
-                            whiteSpace: "pre-wrap",
-                          }}
-                        >
-                          {typeof content.email === "object"
-                            ? content.email.body
-                            : content.email}
-                        </Typography>
+                        {typeof content.email === "object" ? (
+                          <>
+                            <CopyableEmailSubject subject={content.email.subject} />
+                            <CopyableTextBlock text={content.email.body} />
+                          </>
+                        ) : (
+                          (() => {
+                            const match = content.email.match(/^Subject:\s*(.*?)\n\n([\s\S]*)$/i);
+                            if (match) {
+                              return (
+                                <>
+                                  <CopyableEmailSubject subject={match[1]} />
+                                  <CopyableTextBlock text={match[2]} />
+                                </>
+                              );
+                            }
+                            return <CopyableTextBlock text={content.email} />;
+                          })()
+                        )}
                       </CardContent>
                     </Card>
                   )}
@@ -391,10 +530,14 @@ const MarketingPage: React.FC = () => {
                     <Card
                       sx={{
                         border: "1px solid rgba(186,104,200,0.3)",
-                        gridColumn: channels.length < 3 ? "auto" : "1 / -1",
+                        breakInside: "avoid",
+                        display: "inline-block",
+                        width: "100%",
+                        mb: 3,
+                        overflow: "hidden",
                       }}
                     >
-                      <CardContent>
+                      <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
                         <Box
                           sx={{
                             display: "flex",
@@ -408,17 +551,68 @@ const MarketingPage: React.FC = () => {
                             Social Media
                           </Typography>
                         </Box>
-                        <Typography
-                          variant="body2"
+                        <Box
                           sx={{
-                            p: 2,
-                            background: "rgba(255,255,255,0.03)",
-                            borderRadius: 2,
-                            whiteSpace: "pre-wrap",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 2,
                           }}
                         >
-                          {content.social}
-                        </Typography>
+                          {content?.imageUrl && (
+                            <Box
+                              sx={{
+                                position: "relative",
+                                width: "100%",
+                                borderRadius: 2,
+                                overflow: "hidden",
+                                border: "1px solid rgba(255,255,255,0.08)",
+                              }}
+                            >
+                              <Box
+                                component="img"
+                                src={content.imageUrl}
+                                alt="Social Media Visual"
+                                onError={(e: any) => {
+                                  e.target.style.display = "none";
+                                }}
+                                sx={{
+                                  width: "100%",
+                                  display: "block",
+                                  objectFit: "cover",
+                                  aspectRatio: "16 / 9",
+                                }}
+                              />
+                              <IconButton
+                                size="small"
+                                onClick={() =>
+                                  handleDownloadImage(
+                                    content.imageUrl!,
+                                    `${campaignName || "social-campaign"}-visual.png`
+                                  )
+                                }
+                                title="Download Image"
+                                sx={{
+                                  position: "absolute",
+                                  bottom: 12,
+                                  right: 12,
+                                  backgroundColor: "rgba(0, 0, 0, 0.55)",
+                                  backdropFilter: "blur(4px)",
+                                  color: "#ffffff",
+                                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                                  p: 1,
+                                  "&:hover": {
+                                    backgroundColor: "rgba(0, 0, 0, 0.85)",
+                                    transform: "scale(1.05)",
+                                  },
+                                  transition: "all 0.2s ease",
+                                }}
+                              >
+                                <Download fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          )}
+                          <CopyableTextBlock text={content.social} />
+                        </Box>
                       </CardContent>
                     </Card>
                   )}
@@ -647,18 +841,11 @@ const MarketingPage: React.FC = () => {
                               >
                                 SMS
                               </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  p: 1.5,
-                                  mt: 0.5,
-                                  background: "rgba(255,255,255,0.03)",
-                                  borderRadius: 2,
-                                  fontStyle: "italic",
-                                }}
-                              >
-                                {c.smsContent}
-                              </Typography>
+                              <CopyableTextBlock
+                                text={c.smsContent}
+                                fontStyle="italic"
+                                padding={1.5}
+                              />
                             </Box>
                           )}
                           {c.emailContent && (
@@ -669,40 +856,94 @@ const MarketingPage: React.FC = () => {
                               >
                                 EMAIL
                               </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  p: 1.5,
-                                  mt: 0.5,
-                                  background: "rgba(255,255,255,0.03)",
-                                  borderRadius: 2,
-                                  whiteSpace: "pre-wrap",
-                                }}
-                              >
-                                {c.emailContent}
-                              </Typography>
+                              {(() => {
+                                const match = c.emailContent.match(/^Subject:\s*(.*?)\n\n([\s\S]*)$/i);
+                                if (match) {
+                                  return (
+                                    <>
+                                      <CopyableEmailSubject subject={match[1]} />
+                                      <CopyableTextBlock text={match[2]} padding={1.5} />
+                                    </>
+                                  );
+                                }
+                                return <CopyableTextBlock text={c.emailContent} padding={1.5} />;
+                              })()}
                             </Box>
                           )}
                           {c.socialContent && (
-                            <Box>
+                            <Box sx={{ mt: 1 }}>
                               <Typography
                                 variant="caption"
                                 sx={{ color: "#BA68C8", fontWeight: 600 }}
                               >
                                 SOCIAL
                               </Typography>
-                              <Typography
-                                variant="body2"
+                              <Box
                                 sx={{
-                                  p: 1.5,
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: 1.5,
                                   mt: 0.5,
-                                  background: "rgba(255,255,255,0.03)",
-                                  borderRadius: 2,
-                                  whiteSpace: "pre-wrap",
                                 }}
                               >
-                                {c.socialContent}
-                              </Typography>
+                                {c.imageUrl && (
+                                  <Box
+                                    sx={{
+                                      position: "relative",
+                                      width: "100%",
+                                      borderRadius: 2,
+                                      overflow: "hidden",
+                                      border: "1px solid rgba(255,255,255,0.08)",
+                                    }}
+                                  >
+                                    <Box
+                                      component="img"
+                                      src={c.imageUrl}
+                                      alt={c.name}
+                                      onError={(e: any) => {
+                                        e.target.style.display = "none";
+                                      }}
+                                      sx={{
+                                        width: "100%",
+                                        display: "block",
+                                        objectFit: "cover",
+                                        aspectRatio: "16 / 9",
+                                      }}
+                                    />
+                                    <IconButton
+                                      size="small"
+                                      onClick={() =>
+                                        handleDownloadImage(
+                                          c.imageUrl!,
+                                          `${c.name || "campaign"}-visual.png`
+                                        )
+                                      }
+                                      title="Download Image"
+                                      sx={{
+                                        position: "absolute",
+                                        bottom: 12,
+                                        right: 12,
+                                        backgroundColor: "rgba(0, 0, 0, 0.55)",
+                                        backdropFilter: "blur(4px)",
+                                        color: "#ffffff",
+                                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                                        p: 1,
+                                        "&:hover": {
+                                          backgroundColor: "rgba(0, 0, 0, 0.85)",
+                                          transform: "scale(1.05)",
+                                        },
+                                        transition: "all 0.2s ease",
+                                      }}
+                                    >
+                                      <Download fontSize="small" />
+                                    </IconButton>
+                                  </Box>
+                                )}
+                                <CopyableTextBlock
+                                  text={c.socialContent}
+                                  padding={1.5}
+                                />
+                              </Box>
                             </Box>
                           )}
                           {c.telegramContent && (
