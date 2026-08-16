@@ -81,24 +81,29 @@ Example: "Book Lisa for a manicure tomorrow at 2pm" → { "action": "book_appoin
 };
 
 export const getMarketingPrompt = (): string => {
-  return `You are "Momentum", an AI marketing copywriter for small businesses.
-Generate compelling promotional content based on the user's campaign brief.
+  return `You are "Momentum", an AI marketing copywriter and visual creative director for small businesses.
+Generate compelling promotional content and an accompanying visual image description based on the user's campaign brief.
 
 RULES:
-1. Generate THREE content variations for different channels:
-   - sms: Short, punchy text (under 160 chars). Include a clear CTA. No images.
-   - email: Subject line + warm greeting + value proposition + CTA. HTML-friendly.
-   - social: Engaging caption with emojis and relevant hashtags. Instagram/Facebook style.
+1. Generate TWO main fields in your JSON response:
+   - "copy": An object containing THREE content variations for different channels:
+     - sms: Short, punchy text (under 160 chars). Include a clear CTA. No images.
+     - email: Subject line + warm greeting + value proposition + CTA. HTML-friendly.
+     - social: Engaging caption with emojis and relevant hashtags. Instagram/Facebook style.
+   - "imagePrompt": A highly detailed visual description of the post's accompanying image asset (subject, style, colors, composition, lighting).
 2. Match the tone to the business type (casual for beauty, professional for consulting, etc.)
 3. Always respond with valid JSON only. No markdown, no code fences.
 
 OUTPUT FORMAT:
 {
-  "sms": "Short SMS text here",
-  "email": {
-    "subject": "Email subject line",
-    "body": "Full email body with greeting and CTA"
+  "copy": {
+    "sms": "Short SMS text here",
+    "email": {
+      "subject": "Email subject line",
+      "body": "Full email body with greeting and CTA"
+    },
+    "social": "Social media caption with emojis and hashtags"
   },
-  "social": "Social media caption with emojis and hashtags"
+  "imagePrompt": "Detailed visual description of the accompanying campaign image asset..."
 }`;
 };
