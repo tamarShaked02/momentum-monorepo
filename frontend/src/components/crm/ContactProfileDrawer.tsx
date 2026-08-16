@@ -14,6 +14,11 @@ import {
   ListItemText,
   Paper,
   Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from "@mui/material";
 import {
   Close,
@@ -53,6 +58,8 @@ import type {
 import ActivityTimeline from "./ActivityTimeline";
 import InlineNoteComposer from "./InlineNoteComposer";
 import TagManager from "./TagManager";
+import api from "../../api/client";
+import { useSnackbar } from "../../contexts/SnackbarContext";
 
 // --- Types ---
 
@@ -176,6 +183,10 @@ const ContactProfileDrawer: React.FC<ContactProfileDrawerProps> = ({
   const [suggestionError, setSuggestionError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
+  const [telegramMsgOpen, setTelegramMsgOpen] = useState(false);
+  const [telegramMsg, setTelegramMsg] = useState("");
+  const [telegramSending, setTelegramSending] = useState(false);
+  const { showSuccess, showError } = useSnackbar();
 
   // Fetch all contact data
   const fetchContactData = useCallback(async (id: string) => {
@@ -251,6 +262,25 @@ const ContactProfileDrawer: React.FC<ContactProfileDrawerProps> = ({
 
   const handleNoteCreated = () => {
     // ActivityTimeline will auto-refresh via its own fetching
+  };
+
+  const handleSendTelegram = async () => {
+    if (!telegramMsg.trim() || !contact?.telegramChatId) return;
+    setTelegramSending(true);
+    try {
+      await api.post("/telegram/send-notification", {
+        customerId: contact.id,
+        message: telegramMsg,
+      });
+      showSuccess("Message sent to customer!");
+      setTelegramMsgOpen(false);
+      setTelegramMsg("");
+      handleNoteCreated(); // Refresh timeline
+    } catch {
+      showError("Failed to send message");
+    } finally {
+      setTelegramSending(false);
+    }
   };
 
   // Build purchase history from won deals
@@ -1014,9 +1044,57 @@ const ContactProfileDrawer: React.FC<ContactProfileDrawerProps> = ({
                 Create Task
               </Button>
             </Box>
+            
+            {contact.telegramChatId && (
+              <Button
+                variant="outlined"
+                startIcon={<Telegram />}
+                onClick={() => setTelegramMsgOpen(true)}
+                size="small"
+                sx={{
+                  borderColor: "#29B6F6",
+                  color: "#29B6F6",
+                  "&:hover": {
+                    borderColor: "#039BE5",
+                    backgroundColor: "rgba(41,182,246,0.1)",
+                  },
+                }}
+              >
+                Send Telegram Message
+              </Button>
+            )}
           </Box>
         </Box>
       )}
+
+      {/* Telegram Message Dialog */}
+      <Dialog open={telegramMsgOpen} onClose={() => setTelegramMsgOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Send Telegram Message</DialogTitle>
+        <DialogContent sx={{ mt: 1 }}>
+          <TextField
+            autoFocus
+            multiline
+            rows={4}
+            fullWidth
+            placeholder="Type your message here..."
+            value={telegramMsg}
+            onChange={(e) => setTelegramMsg(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button onClick={() => setTelegramMsgOpen(false)} disabled={telegramSending}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSendTelegram}
+            disabled={!telegramMsg.trim() || telegramSending}
+            startIcon={telegramSending ? <CircularProgress size={16} /> : <Telegram />}
+          >
+            {telegramSending ? "Sending..." : "Send Message"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Drawer>
   );
 };

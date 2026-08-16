@@ -92,8 +92,10 @@ export interface MarketingCampaign {
   smsContent: string | null;
   emailContent: string | null;
   socialContent: string | null;
+  telegramContent: string | null;
   imageUrl: string | null;
   scheduledAt: string | null;
+  lastSentAt: string | null;
   createdAt: string;
 }
 

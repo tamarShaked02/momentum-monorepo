@@ -245,16 +245,18 @@ const getMockMarketingResponse = (brief?: string) => {
     body: "Hi there!\n\nWe're running a special promotion this week - 20% off all our services!\n\nDon't miss out on this limited-time offer. Book your appointment today.\n\nSee you soon!",
   };
   const social = "✨ FLASH SALE ALERT ✨\n\n20% OFF all services this week! 🎉\n\nLimited slots available - book now! Link in bio 👆\n\n#SmallBusiness #FlashSale #BookNow #SpecialOffer";
+  const telegram = "🚀 *Flash Sale!* 20% off all services this week only. Book now through this bot before slots fill up! 🎉";
   const imagePrompt = brief
     ? `Vibrant, high-resolution promotional artwork for ${brief}`
     : "Vibrant, high-resolution promotional marketing artwork showcasing a special offer with modern typography and rich gradients.";
 
   return {
-    copy: { sms, email, social },
+    copy: { sms, email, social, telegram },
     imagePrompt,
     sms,
     email,
     social,
+    telegram,
   };
 };
 
@@ -384,7 +386,7 @@ export const processCommand = async (command: string): Promise<any> => {
 
 export const generateMarketingContent = async (
   brief: string,
-): Promise<{ copy: any; imagePrompt: string; sms?: string; email?: any; social?: string }> => {
+): Promise<{ copy: any; imagePrompt: string; sms?: string; email?: any; social?: string; telegram?: string }> => {
   if (env.USE_MOCK_AI) {
     console.log("Using Mock AI for marketing");
     return getMockMarketingResponse(brief);
@@ -399,6 +401,7 @@ export const generateMarketingContent = async (
       sms: parsed.sms || "Special offer available now! Contact us today.",
       email: parsed.email || { subject: "Special Offer", body: "Check out our latest offer!" },
       social: parsed.social || "Check out our latest campaign! #momentum",
+      telegram: parsed.telegram || "Special offer available now! Book today.",
     };
     const imagePrompt = parsed.imagePrompt || `Promotional marketing artwork for: ${brief}`;
 
@@ -408,6 +411,7 @@ export const generateMarketingContent = async (
       sms: copy.sms,
       email: copy.email,
       social: copy.social,
+      telegram: copy.telegram,
     };
   } catch (error) {
     console.error("AI marketing error:", error);

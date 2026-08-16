@@ -86,10 +86,11 @@ Generate compelling promotional content and an accompanying visual image descrip
 
 RULES:
 1. Generate TWO main fields in your JSON response:
-   - "copy": An object containing THREE content variations for different channels:
+   - "copy": An object containing FOUR content variations for different channels:
      - sms: Short, punchy text (under 160 chars). Include a clear CTA. No images.
      - email: Subject line + warm greeting + value proposition + CTA. HTML-friendly.
      - social: Engaging caption with emojis and relevant hashtags. Instagram/Facebook style.
+     - telegram: Direct, friendly messaging using Markdown formatting. Good for broadcast updates.
    - "imagePrompt": A highly detailed visual description of the post's accompanying image asset (subject, style, colors, composition, lighting).
 2. Match the tone to the business type (casual for beauty, professional for consulting, etc.)
 3. Always respond with valid JSON only. No markdown, no code fences.
@@ -102,7 +103,8 @@ OUTPUT FORMAT:
       "subject": "Email subject line",
       "body": "Full email body with greeting and CTA"
     },
-    "social": "Social media caption with emojis and hashtags"
+    "social": "Social media caption with emojis and hashtags",
+    "telegram": "Telegram message with formatting"
   },
   "imagePrompt": "Detailed visual description of the accompanying campaign image asset..."
 }`;

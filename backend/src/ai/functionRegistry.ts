@@ -889,6 +889,7 @@ registryFunctions.set("create_campaign", {
     const emailContent = `Subject: Exclusive offer for ${params.name}!\n\nHello! Check out our latest updates regarding ${goal} tailored just for you.`;
     const smsContent = `Special offer: ${params.name}! ${goal}. Don't miss out. Reply STOP to opt out.`;
     const socialContent = `🚀 Exciting news! Announcing ${params.name}. ${goal}! Tap link in bio to learn more! #momentum #${params.name.replace(/\s+/g, '')}`;
+    const telegramContent = `🚀 *${params.name}*\n\n${goal}\n\nCheck out our latest offer today!`;
 
     const campaign = await prisma.marketingCampaign.create({
       data: {
@@ -900,6 +901,7 @@ registryFunctions.set("create_campaign", {
         emailContent,
         smsContent,
         socialContent,
+        telegramContent,
         imageUrl,
         audienceTags: params.audienceTags || [],
         audienceLifecycleStages: params.audienceStages || [],
@@ -1566,7 +1568,7 @@ registryFunctions.set("create_marketing_campaign", {
   classification: "write",
   parameters: z.object({
     name: z.string().describe("Name of the marketing campaign"),
-    type: z.enum(["email", "sms", "social"]).optional().describe("Campaign marketing channel or type"),
+    type: z.enum(["email", "sms", "social", "telegram"]).optional().describe("Campaign marketing channel or type"),
     targetAudience: z.string().optional().describe("Target audience description, tags, or campaign goal"),
     status: z.enum(["draft", "active", "scheduled", "completed", "paused"]).optional().describe("Status of the campaign"),
   }),
@@ -2030,6 +2032,7 @@ registryFunctions.set("create_campaign", {
     const emailContent = `Subject: Exclusive offer for ${params.name}!\n\nHello! Check out our latest updates regarding ${goal} tailored just for you.`;
     const smsContent = `Special offer: ${params.name}! ${goal}. Don't miss out. Reply STOP to opt out.`;
     const socialContent = `🚀 Exciting news! Announcing ${params.name}. ${goal}! Tap link in bio to learn more! #momentum #${params.name.replace(/\s+/g, '')}`;
+    const telegramContent = `🚀 *${params.name}*\n\n${goal}\n\nCheck out our latest offer today!`;
 
     const campaign = await prisma.marketingCampaign.create({
       data: {
@@ -2041,6 +2044,7 @@ registryFunctions.set("create_campaign", {
         emailContent,
         smsContent,
         socialContent,
+        telegramContent,
         imageUrl,
         audienceTags: params.audienceTags || [],
         audienceLifecycleStages: params.audienceStages || [],

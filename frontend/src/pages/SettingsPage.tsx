@@ -20,6 +20,7 @@ import {
   Notifications,
   Save,
   AutoAwesome,
+  Telegram,
 } from "@mui/icons-material";
 import api from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
@@ -39,6 +40,14 @@ const SettingsPage: React.FC = () => {
   const [googleStatus, setGoogleStatus] = useState<GoogleCalendarStatus | null>(
     null,
   );
+  const [telegramStatus, setTelegramStatus] = useState<{
+    ownerConnected: boolean;
+    ownerPhone: string | null;
+    linkedCustomersCount: number;
+    totalCustomers: number;
+    botUsername: string | null;
+    botInviteLink: string | null;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [businessName, setBusinessName] = useState(user?.businessName || "");
@@ -62,10 +71,19 @@ const SettingsPage: React.FC = () => {
       .get("/google-calendar/status")
       .then((res) => {
         setGoogleStatus(res.data);
-        setLoading(false);
       })
       .catch(() => {
         setGoogleStatus(null);
+      });
+
+    api
+      .get("/telegram/status")
+      .then((res) => {
+        setTelegramStatus(res.data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setTelegramStatus(null);
         setLoading(false);
       });
   }, []);
@@ -100,6 +118,18 @@ const SettingsPage: React.FC = () => {
       showSuccess("Google Calendar disconnected");
     } catch {
       showError("Failed to disconnect Google Calendar");
+    }
+  };
+
+  const handleDisconnectTelegram = async () => {
+    try {
+      await api.post("/telegram/disconnect");
+      if (telegramStatus) {
+        setTelegramStatus({ ...telegramStatus, ownerConnected: false });
+      }
+      showSuccess("Telegram account disconnected");
+    } catch {
+      showError("Failed to disconnect Telegram");
     }
   };
 
@@ -434,7 +464,8 @@ const SettingsPage: React.FC = () => {
                   sx={{ borderRadius: 4 }}
                 />
               ) : (
-                <IntegrationCard
+                <>
+                  <IntegrationCard
                   icon={<Google />}
                   title="Google Calendar"
                   description="Sync your appointments to Google Calendar. Events appear under a calendar named after your business."
@@ -512,6 +543,109 @@ const SettingsPage: React.FC = () => {
                     </Button>
                   )}
                 </IntegrationCard>
+
+                <IntegrationCard
+                  icon={<Telegram />}
+                  title="Telegram Bot"
+                  description="Connect your Telegram to interact with the AI assistant, book appointments, and send marketing campaigns to customers."
+                  connected={telegramStatus?.ownerConnected ?? false}
+                >
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    {telegramStatus?.ownerConnected ? (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 2,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            Owner Account Connected
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Linked via phone: {telegramStatus.ownerPhone || phone}
+                          </Typography>
+                        </Box>
+                        <Button
+                          size="small"
+                          startIcon={<LinkOff sx={{ fontSize: 16 }} />}
+                          onClick={handleDisconnectTelegram}
+                          sx={{
+                            color: "#FF6B6B",
+                            fontSize: "0.8rem",
+                            textTransform: "none",
+                            borderRadius: "8px",
+                            "&:hover": { background: "rgba(255, 107, 107, 0.1)" },
+                          }}
+                        >
+                          Disconnect
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Box>
+                        <Typography variant="body2" sx={{ mb: 1.5, color: isDark ? "#E8EAED" : "#1a1a1a" }}>
+                          To connect, message your bot on Telegram and share your contact. Make sure your phone number is saved in your profile above!
+                        </Typography>
+                        {telegramStatus?.botInviteLink ? (
+                          <Button
+                            variant="outlined"
+                            startIcon={<Telegram />}
+                            href={telegramStatus.botInviteLink}
+                            target="_blank"
+                            sx={{
+                              borderColor: isDark ? "rgba(255,255,255,0.12)" : "#d1d1d6",
+                              color: isDark ? "#E8EAED" : "#1a1a1a",
+                              borderRadius: "12px",
+                              textTransform: "none",
+                              fontSize: "0.85rem",
+                              fontWeight: 500,
+                            }}
+                          >
+                            Open Bot to Connect
+                          </Button>
+                        ) : (
+                          <Typography variant="body2" color="error">
+                            Bot username not configured.
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+
+                    <Divider sx={{ borderColor: isDark ? "rgba(255,255,255,0.04)" : "#f0f0f0", my: 1 }} />
+                    
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                        Customer Integration
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                        Customers can link their accounts to book appointments and receive updates.
+                      </Typography>
+                      
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
+                        <Box>
+                          <Typography variant="h4" sx={{ color: "#4FC3F7", fontWeight: 700 }}>
+                            {telegramStatus?.linkedCustomersCount || 0}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Linked Customers
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="h4" sx={{ color: "text.primary", fontWeight: 700 }}>
+                            {telegramStatus?.totalCustomers || 0}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Total Customers
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+                  </Box>
+                </IntegrationCard>
+                </>
               )}
 
               <IntegrationCard
