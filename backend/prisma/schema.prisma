@@ -157,8 +157,10 @@ model MarketingCampaign {
   smsContent              String?
   emailContent            String?
   socialContent           String?
+  telegramContent         String?
   imageUrl                String?
   scheduledAt             DateTime?
+  lastSentAt              DateTime?
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
   audienceLifecycleStages String[]

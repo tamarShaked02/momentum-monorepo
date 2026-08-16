@@ -246,6 +246,7 @@ const getMockMarketingResponse = () => ({
   },
   social:
     "✨ FLASH SALE ALERT ✨\n\n20% OFF all services this week! 🎉\n\nLimited slots available - book now! Link in bio 👆\n\n#SmallBusiness #FlashSale #BookNow #SpecialOffer",
+  telegram: "🚀 *Flash Sale!* 20% off all services this week only. Book now through this bot before slots fill up! 🎉",
 });
 
 // ---------- Real AI Calls ----------

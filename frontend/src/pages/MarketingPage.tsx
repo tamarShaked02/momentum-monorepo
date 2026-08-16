@@ -25,6 +25,7 @@ import {
   Email,
   Share,
   Delete,
+  Telegram,
 } from "@mui/icons-material";
 import api from "../api/client";
 import { useSnackbar } from "../contexts/SnackbarContext";
@@ -49,7 +50,8 @@ const MarketingPage: React.FC = () => {
   const [saved, setSaved] = useState(false);
   const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(false);
-  const { showError, showConfirm } = useSnackbar();
+  const [sendingCampaignId, setSendingCampaignId] = useState<string | null>(null);
+  const { showError, showConfirm, showSuccess } = useSnackbar();
 
   const goals = [
     { value: "fill_schedule", label: "Fill Empty Slots", emoji: "📅" },
@@ -109,6 +111,7 @@ const MarketingPage: React.FC = () => {
             ? `${content.email.subject}\n\n${content.email.body}`
             : content?.email || null,
         socialContent: content?.social || null,
+        telegramContent: content?.telegram || null,
       });
       setSaved(true);
     } catch {
@@ -130,6 +133,19 @@ const MarketingPage: React.FC = () => {
     setCampaigns((prev) =>
       prev.map((c) => (c.id === id ? { ...c, status } : c)),
     );
+  };
+
+  const handleSendTelegramCampaign = async (id: string) => {
+    setSendingCampaignId(id);
+    try {
+      const res = await api.post("/telegram/send-campaign", { campaignId: id });
+      showSuccess(`Campaign successfully sent to ${res.data.sent} customer(s)!`);
+      fetchCampaigns();
+    } catch (err: any) {
+      showError(err.response?.data?.error || "Failed to send campaign");
+    } finally {
+      setSendingCampaignId(null);
+    }
   };
 
   const statusColor: Record<string, string> = {
@@ -262,6 +278,9 @@ const MarketingPage: React.FC = () => {
                     </ToggleButton>
                     <ToggleButton value="social" sx={{ gap: 0.5 }}>
                       <Share fontSize="small" /> Social
+                    </ToggleButton>
+                    <ToggleButton value="telegram" sx={{ gap: 0.5 }}>
+                      <Telegram fontSize="small" /> Telegram
                     </ToggleButton>
                   </ToggleButtonGroup>
                   <Box sx={{ display: "flex", gap: 2 }}>
@@ -399,6 +418,40 @@ const MarketingPage: React.FC = () => {
                           }}
                         >
                           {content.social}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  )}
+                  {channels.includes("telegram") && content.telegram && (
+                    <Card
+                      sx={{
+                        border: "1px solid rgba(41,182,246,0.3)",
+                      }}
+                    >
+                      <CardContent>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            mb: 2,
+                          }}
+                        >
+                          <Telegram sx={{ color: "#29B6F6" }} />
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            Telegram
+                          </Typography>
+                        </Box>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            p: 2,
+                            background: "rgba(255,255,255,0.03)",
+                            borderRadius: 2,
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {content.telegram}
                         </Typography>
                       </CardContent>
                     </Card>
@@ -652,6 +705,28 @@ const MarketingPage: React.FC = () => {
                               </Typography>
                             </Box>
                           )}
+                          {c.telegramContent && (
+                            <Box>
+                              <Typography
+                                variant="caption"
+                                sx={{ color: "#29B6F6", fontWeight: 600 }}
+                              >
+                                TELEGRAM
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  p: 1.5,
+                                  mt: 0.5,
+                                  background: "rgba(255,255,255,0.03)",
+                                  borderRadius: 2,
+                                  whiteSpace: "pre-wrap",
+                                }}
+                              >
+                                {c.telegramContent}
+                              </Typography>
+                            </Box>
+                          )}
                           <Typography
                             variant="caption"
                             color="text.secondary"
@@ -660,12 +735,33 @@ const MarketingPage: React.FC = () => {
                             Created {new Date(c.createdAt).toLocaleDateString()}
                           </Typography>
                         </Box>
-                        <IconButton
-                          onClick={() => handleDelete(c.id)}
-                          sx={{ color: "#FF6B6B", ml: 1 }}
-                        >
-                          <Delete />
-                        </IconButton>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1, ml: 1, alignItems: "flex-end" }}>
+                          <IconButton
+                            onClick={() => handleDelete(c.id)}
+                            sx={{ color: "#FF6B6B" }}
+                          >
+                            <Delete />
+                          </IconButton>
+                          {c.telegramContent && (
+                            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.5 }}>
+                              <Button 
+                                variant="outlined" 
+                                size="small" 
+                                color="info"
+                                startIcon={sendingCampaignId === c.id ? <CircularProgress size={14} /> : <Telegram />}
+                                onClick={() => handleSendTelegramCampaign(c.id)}
+                                disabled={sendingCampaignId === c.id}
+                              >
+                                {c.lastSentAt ? "Send via Bot Again" : "Bulk Send via Bot"}
+                              </Button>
+                              {c.lastSentAt && (
+                                <Typography variant="caption" sx={{ color: "#4FC3F7", fontSize: "0.65rem" }}>
+                                  Last sent: {new Date(c.lastSentAt).toLocaleString()}
+                                </Typography>
+                              )}
+                            </Box>
+                          )}
+                        </Box>
                       </Box>
                     </CardContent>
                   </Card>
