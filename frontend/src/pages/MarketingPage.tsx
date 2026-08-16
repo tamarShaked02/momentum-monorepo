@@ -1002,13 +1002,50 @@ const MarketingPage: React.FC = () => {
                             </Box>
                           )}
                           {c.telegramContent && (
-                            <Box sx={{ mt: 1 }}>
-                              <Typography
-                                variant="caption"
-                                sx={{ color: "#29B6F6", fontWeight: 600 }}
+                            <Box sx={{ mt: 1.5 }}>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  mb: 0.5,
+                                  flexWrap: "wrap",
+                                  gap: 1,
+                                }}
                               >
-                                TELEGRAM
-                              </Typography>
+                                <Typography
+                                  variant="caption"
+                                  sx={{ color: "#29B6F6", fontWeight: 600 }}
+                                >
+                                  TELEGRAM
+                                </Typography>
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  color="info"
+                                  startIcon={
+                                    sendingCampaignId === c.id ? (
+                                      <CircularProgress size={14} color="inherit" />
+                                    ) : (
+                                      <Telegram />
+                                    )
+                                  }
+                                  onClick={() => handleSendTelegramCampaign(c.id)}
+                                  disabled={sendingCampaignId === c.id}
+                                  sx={{ textTransform: "none", fontWeight: 600, borderRadius: 2 }}
+                                >
+                                  {sendingCampaignId === c.id
+                                    ? "Sending..."
+                                    : c.lastSentAt
+                                    ? "Send via Telegram Bot Again"
+                                    : "Send via Telegram Bot"}
+                                </Button>
+                              </Box>
+                              {c.lastSentAt && (
+                                <Typography variant="caption" sx={{ color: "#4FC3F7", fontSize: "0.65rem", display: "block", mb: 0.5, textAlign: "right" }}>
+                                  Last sent: {new Date(c.lastSentAt).toLocaleString()}
+                                </Typography>
+                              )}
                               <CopyableTextBlock
                                 text={c.telegramContent}
                                 padding={1.5}
@@ -1030,25 +1067,6 @@ const MarketingPage: React.FC = () => {
                           >
                             <Delete />
                           </IconButton>
-                          {c.telegramContent && (
-                            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.5 }}>
-                              <Button 
-                                variant="outlined" 
-                                size="small" 
-                                color="info"
-                                startIcon={sendingCampaignId === c.id ? <CircularProgress size={14} /> : <Telegram />}
-                                onClick={() => handleSendTelegramCampaign(c.id)}
-                                disabled={sendingCampaignId === c.id}
-                              >
-                                {c.lastSentAt ? "Send via Bot Again" : "Bulk Send via Bot"}
-                              </Button>
-                              {c.lastSentAt && (
-                                <Typography variant="caption" sx={{ color: "#4FC3F7", fontSize: "0.65rem" }}>
-                                  Last sent: {new Date(c.lastSentAt).toLocaleString()}
-                                </Typography>
-                              )}
-                            </Box>
-                          )}
                         </Box>
                       </Box>
                     </CardContent>
