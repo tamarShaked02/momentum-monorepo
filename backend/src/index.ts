@@ -79,17 +79,9 @@ app.listen(env.PORT, () => {
   console.log(`🚀 Momentum API running on port ${env.PORT}`);
 });
 
-// Start Telegram bot
+// Start Telegram bot in polling mode
 if (bot) {
-  if (env.NODE_ENV === "production") {
-    const webhookUrl = `${env.BACKEND_URL}/telegram/webhook`;
-    bot.telegram.setWebhook(webhookUrl)
-      .then(() => console.log(`🤖 Telegram webhook set to ${webhookUrl}`))
-      .catch((err) => console.error("Failed to set Telegram webhook:", err));
-  } else {
-    // Polling for development
-    bot.launch().then(() => console.log("🤖 Telegram bot is running in polling mode..."));
-  }
+  bot.launch().then(() => console.log("🤖 Telegram bot is running in polling mode..."));
 }
 
 export default app;
