@@ -192,6 +192,7 @@ router.put(
         emailContent,
         socialContent,
         telegramContent,
+        imageUrl,
         scheduledAt,
         audienceTags,
         audienceLifecycleStages,
@@ -207,6 +208,7 @@ router.put(
           ...(emailContent !== undefined && { emailContent }),
           ...(socialContent !== undefined && { socialContent }),
           ...(telegramContent !== undefined && { telegramContent }),
+          ...(imageUrl !== undefined && { imageUrl }),
           ...(scheduledAt !== undefined && {
             scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
           }),
@@ -339,6 +341,7 @@ router.post(
         sms: generated.sms,
         email: generated.email,
         social: generated.social,
+        telegram: generated.telegram,
       };
 
       const isSocialRequested = includesSocialChannel(channels);
@@ -361,6 +364,7 @@ router.post(
             smsContent: copy.sms || null,
             emailContent: typeof copy.email === "object" ? `${copy.email.subject}\n\n${copy.email.body}` : copy.email || null,
             socialContent: copy.social || null,
+            telegramContent: copy.telegram || null,
             imageUrl,
           },
         });
@@ -373,6 +377,7 @@ router.post(
         sms: copy.sms,
         email: copy.email,
         social: copy.social,
+        telegram: copy.telegram,
         ...(campaign ? { campaign } : {}),
       });
     } catch (error: any) {
