@@ -161,6 +161,8 @@ const MarketingPage: React.FC = () => {
   const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(false);
   const [sendingCampaignId, setSendingCampaignId] = useState<string | null>(null);
+  const [savedCampaignId, setSavedCampaignId] = useState<string | null>(null);
+  const [sendingGeneratedTelegram, setSendingGeneratedTelegram] = useState(false);
   const { showError, showConfirm, showSuccess } = useSnackbar();
 
   const goals = [
@@ -194,12 +196,18 @@ const MarketingPage: React.FC = () => {
   const handleGenerate = async () => {
     if (!brief.trim()) return;
     setLoading(true);
+    setSaved(false);
+    setSavedCampaignId(null);
     try {
       const res = await api.post("/marketing/generate", {
         brief: `Goal: ${goal}. ${brief}`,
         channels,
       });
       setContent(res.data);
+      if (res.data?.campaign?.id) {
+        setSavedCampaignId(res.data.campaign.id);
+        setSaved(true);
+      }
       setStep(2);
     } catch {
       showError("Failed to generate content.");
@@ -208,10 +216,11 @@ const MarketingPage: React.FC = () => {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (): Promise<string | null> => {
+    if (savedCampaignId) return savedCampaignId;
     setSaving(true);
     try {
-      await api.post("/marketing/automations", {
+      const res = await api.post("/marketing/automations", {
         name: campaignName || `Campaign - ${new Date().toLocaleDateString()}`,
         goal,
         channels,
@@ -225,10 +234,35 @@ const MarketingPage: React.FC = () => {
         imageUrl: content?.imageUrl || null,
       });
       setSaved(true);
+      const newId = res.data?.id || null;
+      if (newId) setSavedCampaignId(newId);
+      return newId;
     } catch {
       showError("Failed to save campaign.");
+      return null;
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSendGeneratedTelegram = async () => {
+    setSendingGeneratedTelegram(true);
+    try {
+      let targetId = savedCampaignId;
+      if (!targetId) {
+        targetId = await handleSave();
+      }
+      if (!targetId) {
+        showError("Failed to save campaign before sending.");
+        return;
+      }
+      const res = await api.post("/telegram/send-campaign", { campaignId: targetId });
+      showSuccess(`Campaign successfully sent to ${res.data.sent} customer(s)!`);
+      fetchCampaigns();
+    } catch (err: any) {
+      showError(err.response?.data?.error || "Failed to send campaign");
+    } finally {
+      setSendingGeneratedTelegram(false);
     }
   };
 
@@ -620,6 +654,10 @@ const MarketingPage: React.FC = () => {
                     <Card
                       sx={{
                         border: "1px solid rgba(41,182,246,0.3)",
+                        breakInside: "avoid",
+                        display: "inline-block",
+                        width: "100%",
+                        mb: 3,
                       }}
                     >
                       <CardContent>
@@ -627,26 +665,43 @@ const MarketingPage: React.FC = () => {
                           sx={{
                             display: "flex",
                             alignItems: "center",
+                            justifyContent: "space-between",
+                            flexWrap: "wrap",
                             gap: 1,
                             mb: 2,
                           }}
                         >
-                          <Telegram sx={{ color: "#29B6F6" }} />
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            Telegram
-                          </Typography>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <Telegram sx={{ color: "#29B6F6" }} />
+                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                              Telegram
+                            </Typography>
+                          </Box>
+                          <Button
+                            variant="contained"
+                            size="small"
+                            color="info"
+                            startIcon={
+                              sendingGeneratedTelegram ? (
+                                <CircularProgress size={14} color="inherit" />
+                              ) : (
+                                <Telegram />
+                              )
+                            }
+                            onClick={handleSendGeneratedTelegram}
+                            disabled={sendingGeneratedTelegram}
+                            sx={{ textTransform: "none", fontWeight: 600, borderRadius: 2 }}
+                          >
+                            {sendingGeneratedTelegram ? "Sending..." : "Send via Telegram Bot"}
+                          </Button>
                         </Box>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            p: 2,
-                            background: "rgba(255,255,255,0.03)",
-                            borderRadius: 2,
-                            whiteSpace: "pre-wrap",
-                          }}
-                        >
-                          {content.telegram}
-                        </Typography>
+                        <CopyableTextBlock text={content.telegram} />
                       </CardContent>
                     </Card>
                   )}
@@ -947,25 +1002,17 @@ const MarketingPage: React.FC = () => {
                             </Box>
                           )}
                           {c.telegramContent && (
-                            <Box>
+                            <Box sx={{ mt: 1 }}>
                               <Typography
                                 variant="caption"
                                 sx={{ color: "#29B6F6", fontWeight: 600 }}
                               >
                                 TELEGRAM
                               </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  p: 1.5,
-                                  mt: 0.5,
-                                  background: "rgba(255,255,255,0.03)",
-                                  borderRadius: 2,
-                                  whiteSpace: "pre-wrap",
-                                }}
-                              >
-                                {c.telegramContent}
-                              </Typography>
+                              <CopyableTextBlock
+                                text={c.telegramContent}
+                                padding={1.5}
+                              />
                             </Box>
                           )}
                           <Typography
