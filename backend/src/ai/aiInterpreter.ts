@@ -172,18 +172,43 @@ function regexFallback(command: string): InterpretResult {
     };
   }
 
-  // Book appointment: book manicure on Friday at 2pm
-  const bookRegex = /book\s+(.+?)\s+(?:on\s+)?(.+?)\s+(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i;
-  const bookMatch = lower.match(bookRegex);
-  if (bookMatch) {
+  // Book appointment
+  if (lower.startsWith("book ")) {
+    let time = "9:00am";
+    const timeMatch = lower.match(/at\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i);
+    if (timeMatch) {
+      time = timeMatch[1].trim();
+    }
+    
+    let remainder = lower.replace(/^book\s+/i, "").replace(timeMatch ? timeMatch[0] : "", "").trim();
+    
+    let customerName: string | undefined = undefined;
+    const forMatch = remainder.match(/for\s+(?:the\s+)?(?:customer\s+)?(.+?)(?=\s+on\s+|\s+tomorrow|\s+tommorow|\s+tommorrow|\s+today|\s+next|$)/i);
+    if (forMatch) {
+      customerName = forMatch[1].trim();
+      remainder = remainder.replace(forMatch[0], "").trim();
+    }
+    
+    // Extract title (assume first word or "appointment")
+    let title = "appointment";
+    const titleMatch = remainder.match(/^([\w-]+)\s*/i);
+    if (titleMatch) {
+      title = titleMatch[1];
+      remainder = remainder.replace(titleMatch[0], "").trim();
+    }
+    
+    let date = remainder || "today";
+    if (date.startsWith("on ")) date = date.substring(3).trim();
+
     return {
       type: "function_call",
       functionCall: {
         action: "create_appointment",
         parameters: {
-          title: bookMatch[1].trim(),
-          date: bookMatch[2].trim(),
-          time: bookMatch[3].trim(),
+          title,
+          date,
+          time,
+          ...(customerName && { customerName })
         },
       },
     };
@@ -294,10 +319,13 @@ async function sendMessageWithRetry(session: any, command: string): Promise<any>
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const responsePromise = session.sendMessage(command);
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout")), 30000)
-      );
-      return await Promise.race([responsePromise, timeoutPromise]);
+      let timerId: NodeJS.Timeout | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timerId = setTimeout(() => reject(new Error("Timeout")), 30000);
+      });
+      const result = await Promise.race([responsePromise, timeoutPromise]);
+      if (timerId) clearTimeout(timerId);
+      return result;
     } catch (error: any) {
       const status = error?.status || error?.statusCode;
       const msg = error?.message || "";
@@ -325,8 +353,13 @@ async function sendMessageWithRetry(session: any, command: string): Promise<any>
 }
 
 export async function interpretCommand(command: string, userId: string): Promise<InterpretResult> {
-  if (env.USE_MOCK_AI) {
-    return regexFallback(command);
+  // 1. High-Efficiency Fast Path: Try regex routing first
+  const fastMatch = regexFallback(command);
+  if (fastMatch.type === "function_call" || env.USE_MOCK_AI) {
+    if (fastMatch.type === "function_call") {
+      console.log(`[AI Routing] High-efficiency regex match found for: ${fastMatch.functionCall?.action}`);
+    }
+    return fastMatch;
   }
 
   const genAI = getClient();
@@ -337,7 +370,7 @@ export async function interpretCommand(command: string, userId: string): Promise
   try {
     const declarations = functionRegistry.getAllDeclarations();
     const model = genAI.getGenerativeModel({
-      model: "gemini-flash-latest",
+      model: "gemini-3.5-flash-lite",
       tools: [{ functionDeclarations: declarations }],
       systemInstruction:
         "You are the central command AI for the business system. You have full read and write access to Scheduling, CRM, Marketing, Tasks, Inventory, and Analytics. When a user asks a question about their data, use the retrieval tools to fetch real data and answer concisely with bottom-line numbers. When a user requests an action, use the mutation tools to execute it and confirm success.\n\n" +
@@ -363,6 +396,12 @@ export async function interpretCommand(command: string, userId: string): Promise
 
     const result = await sendMessageWithRetry(session, command);
     const functionCalls = result.response.functionCalls();
+    const usage = result.response.usageMetadata;
+    const modelVersion = (result.response as any).modelVersion || "gemini-flash-latest";
+    
+    if (usage) {
+      console.log(`[AI Token Usage - aiInterpreter] Model: ${modelVersion} | Prompt: ${usage.promptTokenCount} | Candidates: ${usage.candidatesTokenCount} | Total: ${usage.totalTokenCount}`);
+    }
 
     if (functionCalls && functionCalls.length > 0) {
       const call = functionCalls[0];
