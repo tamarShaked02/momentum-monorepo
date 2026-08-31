@@ -270,10 +270,20 @@ async function generateContentWithRetry(model: any, fullPrompt: string): Promise
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const responsePromise = model.generateContent(fullPrompt);
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout")), 30000)
-      );
-      return await Promise.race([responsePromise, timeoutPromise]);
+      let timerId: NodeJS.Timeout | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timerId = setTimeout(() => reject(new Error("Timeout")), 30000);
+      });
+      const result = await Promise.race([responsePromise, timeoutPromise]);
+      if (timerId) clearTimeout(timerId);
+      
+      const response = (result as any).response;
+      const usage = response?.usageMetadata;
+      const modelVersion = response?.modelVersion || "gemini-3.5-flash-lite";
+      if (usage) {
+        console.log(`[AI Token Usage - aiService] Model: ${modelVersion} | Prompt: ${usage.promptTokenCount} | Candidates: ${usage.candidatesTokenCount} | Total: ${usage.totalTokenCount}`);
+      }
+      return result;
     } catch (error: any) {
       const status = error?.status || error?.statusCode;
       const msg = error?.message || "";
@@ -307,7 +317,7 @@ const callGemini = async (
   const genAI = getClient();
   if (!genAI) throw new Error("AI client not available");
 
-  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+  const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
   const fullPrompt = `${systemPrompt}\n\nUSER INPUT: "${userPrompt}"`;
   const result = await generateContentWithRetry(model, fullPrompt);
   const response = result.response;
@@ -325,7 +335,7 @@ const callGeminiWithHistory = async (
   const genAI = getClient();
   if (!genAI) throw new Error("AI client not available");
 
-  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+  const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
   const conversationText = history
     .map((m) => `${m.role === "user" ? "USER" : "ASSISTANT"}: ${m.content}`)
@@ -441,19 +451,27 @@ const callGeminiWithTimeout = async (
   const genAI = getClient();
   if (!genAI) return null;
 
-  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+  const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
   const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
 
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("AI_TIMEOUT")), CRM_AI_TIMEOUT),
-  );
+  let timerId: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timerId = setTimeout(() => reject(new Error("AI_TIMEOUT")), CRM_AI_TIMEOUT);
+  });
 
   try {
     const result = await Promise.race([
       model.generateContent(fullPrompt),
       timeoutPromise,
     ]);
+    if (timerId) clearTimeout(timerId);
+    
     const response = (result as any).response;
+    const usage = response?.usageMetadata;
+    const modelVersion = response?.modelVersion || "gemini-3.5-flash-lite";
+    if (usage) {
+      console.log(`[AI Token Usage - aiService CRM] Model: ${modelVersion} | Prompt: ${usage.promptTokenCount} | Candidates: ${usage.candidatesTokenCount} | Total: ${usage.totalTokenCount}`);
+    }
     const text = response.text();
     return text
       .replace(/```json/g, "")

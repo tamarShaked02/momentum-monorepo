@@ -8,6 +8,8 @@ export function resolveRelativeDate(expression: string, referenceDate: Date = ne
   const expr = expression.toLowerCase().trim();
   const result = new Date(referenceDate);
 
+  let dateModified = false;
+
   // Match "in N hours" or "in N days"
   const inHoursMatch = expr.match(/^in\s+(\d+)\s+hours?$/);
   if (inHoursMatch) {
@@ -23,20 +25,12 @@ export function resolveRelativeDate(expression: string, referenceDate: Date = ne
     return result;
   }
 
-  // Handle "tomorrow"
-  if (expr.includes("tomorrow")) {
+  // Handle "tomorrow" and "today"
+  if (expr.includes("tomorrow") || expr.includes("tommorow") || expr.includes("tommorrow")) {
     result.setDate(result.getDate() + 1);
-    // Parse time if specified, e.g. "tomorrow at 3pm"
-    const timeMatch = expr.match(/at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
-    if (timeMatch) {
-      let hours = parseInt(timeMatch[1], 10);
-      const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
-      const ampm = timeMatch[3];
-      if (ampm === "pm" && hours < 12) hours += 12;
-      if (ampm === "am" && hours === 12) hours = 0;
-      result.setHours(hours, minutes, 0, 0);
-    }
-    return result;
+    dateModified = true;
+  } else if (expr.includes("today")) {
+    dateModified = true;
   }
 
   // Handle "next monday", "next tuesday", etc.
@@ -51,6 +45,22 @@ export function resolveRelativeDate(expression: string, referenceDate: Date = ne
       diff += 7;
     }
     result.setDate(result.getDate() + diff);
+    dateModified = true;
+  }
+
+  // Parse time if specified, e.g. "tomorrow at 3pm", "today at 14:00", or just "at 5pm"
+  const timeMatch = expr.match(/at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+  if (timeMatch) {
+    let hours = parseInt(timeMatch[1], 10);
+    const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+    const ampm = timeMatch[3];
+    if (ampm === "pm" && hours < 12) hours += 12;
+    if (ampm === "am" && hours === 12) hours = 0;
+    result.setHours(hours, minutes, 0, 0);
+    return result;
+  }
+
+  if (dateModified) {
     return result;
   }
 
